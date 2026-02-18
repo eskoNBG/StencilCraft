@@ -31,7 +31,7 @@ export default function Home() {
   const { t } = useLocale();
   const { data: session } = useSession();
   const { isGenerating, progress, statusMessage, currentResult, setCurrentResult, generateStencil } = useStencilGenerator();
-  const { gallery, addToGallery, toggleFavorite, deleteFromGallery } = useGallery();
+  const { gallery, isLoaded, addToGallery, toggleFavorite, deleteFromGallery } = useGallery();
 
   // Upload state
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
@@ -60,7 +60,8 @@ export default function Home() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
+    const validTypes = ["image/jpeg", "image/png", "image/webp", "image/tiff"];
+    if (!file.type.startsWith("image/") && !validTypes.includes(file.type)) {
       toast({ title: t("upload.invalidFormat"), description: t("upload.invalidFormatDesc"), variant: "destructive" });
       return;
     }
@@ -168,12 +169,12 @@ export default function Home() {
                   <div className="text-sm text-muted-foreground">{t("hero.styles")}</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">&lt;5s</div>
+                  <div className="text-2xl font-bold text-primary">15-30s</div>
                   <div className="text-sm text-muted-foreground">{t("hero.avgTime")}</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">&infin;</div>
-                  <div className="text-sm text-muted-foreground">{t("hero.free")}</div>
+                  <div className="text-2xl font-bold text-primary">{t("hero.startingAt")}</div>
+                  <div className="text-sm text-muted-foreground">{t("hero.pricing")}</div>
                 </div>
               </div>
               <HeroCarousel />
@@ -240,10 +241,23 @@ export default function Home() {
                       <input
                         ref={fileInputRef}
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/png,image/webp,image/tiff"
                         className="hidden"
                         onChange={handleImageUpload}
                       />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Pro Tip */}
+                <Card className="glass border-primary/20 bg-gradient-to-br from-[var(--gradient-from)]/10 to-[var(--gradient-to)]/10">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start gap-3">
+                      <Info className="w-5 h-5 text-primary mt-0.5" />
+                      <div className="text-sm text-muted-foreground">
+                        <p className="font-medium text-foreground mb-1">{t("common.proTip")}</p>
+                        <p>{t("tip.bestResults")}</p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -324,23 +338,13 @@ export default function Home() {
                   onShowComparisonChange={setShowComparison}
                   hasResult={!!currentResult}
                 />
-                <Card className="glass border-primary/20 bg-gradient-to-br from-[var(--gradient-from)]/10 to-[var(--gradient-to)]/10">
-                  <CardContent className="pt-6">
-                    <div className="flex items-start gap-3">
-                      <Info className="w-5 h-5 text-primary mt-0.5" />
-                      <div className="text-sm text-muted-foreground">
-                        <p className="font-medium text-foreground mb-1">{t("common.proTip")}</p>
-                        <p>{t("tip.bestResults")}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
               </div>
             </div>
           </div>
         ) : (
           <GalleryView
             gallery={gallery}
+            isLoading={!isLoaded}
             onToggleFavorite={toggleFavorite}
             onDelete={deleteFromGallery}
             onSwitchToCreate={() => setActiveTab("create")}

@@ -25,16 +25,17 @@ const translations = {
     "hero.subtitle": "Professionelle Tattoo-Schablonen in Sekunden. Klarere Linien f\u00FCr bessere Tattoos und zufriedenere Kunden.",
     "hero.styles": "Stile",
     "hero.avgTime": "\u00D8 Zeit",
-    "hero.free": "Kostenlos",
+    "hero.startingAt": "Ab 0\u20AC",
+    "hero.pricing": "Preise",
 
     // Upload
     "upload.title": "Bild hochladen",
-    "upload.subtitle": "JPG, PNG, WEBP bis 10MB",
+    "upload.subtitle": "JPG, PNG, WEBP, TIFF bis 10MB",
     "upload.dropzone": "Bild hierher ziehen oder klicken",
     "upload.dropzoneAlt": "oder w\u00E4hlen Sie eine Datei aus",
     "upload.dropzoneAria": "Bild hochladen \u2014 klicken oder Datei hierher ziehen",
     "upload.invalidFormat": "Ung\u00FCltiges Format",
-    "upload.invalidFormatDesc": "Bitte laden Sie eine Bilddatei hoch (JPG, PNG, WEBP)",
+    "upload.invalidFormatDesc": "Bitte laden Sie eine Bilddatei hoch (JPG, PNG, WEBP, TIFF)",
     "upload.tooLarge": "Datei zu gro\u00DF",
     "upload.tooLargeDesc": "Die Datei darf maximal 10MB gro\u00DF sein",
     "upload.success": "Bild hochgeladen",
@@ -256,6 +257,10 @@ const translations = {
     "showcase.realismDesc": "Hochdetaillierte realistische Motive \u2014 f\u00FCr anspruchsvolle Tattoo-Designs.",
     "showcase.originalPhoto": "Original-Foto",
     "showcase.stencilResult": "Stencil-Ergebnis",
+    "showcase.hatchingMode": "Schraffur",
+    "showcase.solidMode": "Solid",
+    "showcase.hatchingResult": "Schraffur-Ergebnis",
+    "showcase.solidResult": "Solid-Ergebnis",
     "showcase.uploadNote": "Laden Sie Ihr eigenes Bild hoch um das Ergebnis zu sehen",
 
     // Team
@@ -293,7 +298,7 @@ const translations = {
     "faq.q1": "Wie funktioniert die Stencil-Generierung?",
     "faq.a1": "Laden Sie ein Foto hoch, w\u00E4hlen Sie einen Stil und unsere KI-gest\u00FCtzte Bildverarbeitung erstellt in Sekunden ein druckfertiges Tattoo-Stencil mit sauberen Linien und optimalen Kontrasten.",
     "faq.q2": "Welche Bildformate werden unterst\u00FCtzt?",
-    "faq.a2": "Wir unterst\u00FCtzen JPG, PNG und WEBP Formate bis zu einer Gr\u00F6\u00DFe von 10MB. F\u00FCr beste Ergebnisse verwenden Sie hochaufl\u00F6sende Bilder mit klaren Kontrasten.",
+    "faq.a2": "Wir unterst\u00FCtzen JPG, PNG, WEBP und TIFF Formate bis zu einer Gr\u00F6\u00DFe von 10MB. F\u00FCr beste Ergebnisse verwenden Sie hochaufl\u00F6sende Bilder mit klaren Kontrasten.",
     "faq.q3": "Kann ich das Stencil in Procreate verwenden?",
     "faq.a3": "Ja! Exportieren Sie Ihr Stencil als PSD-Datei mit Ebenen, die direkt in Procreate ge\u00F6ffnet werden kann. Die Original-Ebene dient als Referenz.",
     "faq.q4": "Was ist der Unterschied zwischen den Stilen?",
@@ -309,7 +314,7 @@ const translations = {
     "faq.q9": "Unterst\u00FCtzt StencilCraft SVG-Export?",
     "faq.a9": "Ja, Pro- und Studio-User k\u00F6nnen Stencils als SVG exportieren \u2014 perfekt f\u00FCr Schneidemaschinen und skalierbare Ausgabe in jeder Gr\u00F6\u00DFe.",
     "faq.q10": "Gibt es eine Geld-zur\u00FCck-Garantie?",
-    "faq.a10": "Ja, wir bieten eine 14-t\u00E4gige Geld-zur\u00FCck-Garantie. Wenn Sie nicht zufrieden sind, erstatten wir Ihre Zahlung vollst\u00E4ndig.",
+    "faq.a10": "Ja, wir bieten eine 30-t\u00E4gige Geld-zur\u00FCck-Garantie. Wenn Sie nicht zufrieden sind, erstatten wir Ihre Zahlung vollst\u00E4ndig.",
 
     // Social Proof
     "social.artists": "Tattoo-K\u00FCnstler",
@@ -355,6 +360,8 @@ const translations = {
     "pricing.yearly": "J\u00E4hrlich",
     "pricing.yearlySave": "Sparen Sie 2 Monate bei j\u00E4hrlicher Abrechnung",
     "pricing.perMonthYearly": "/Monat (j\u00E4hrlich)",
+    "pricing.freeTrial": "3 Tage kostenlos testen",
+    "pricing.creditRollover": "Credit-\u00DCbertrag (bis 50%)",
 
     // Legal - Privacy
     "legal.privacyTitle": "Datenschutzerkl\u00E4rung",
@@ -389,7 +396,7 @@ const translations = {
     "legal.intellectualProperty": "Geistiges Eigentum",
     "legal.intellectualPropertyDesc": "Sie behalten alle Rechte an Ihren hochgeladenen Bildern und generierten Stencils. StencilCraft gew\u00E4hrt Ihnen eine Lizenz zur Nutzung des Services gem\u00E4\u00DF Ihrem Abonnement.",
     "legal.refunds": "R\u00FCckerstattungen",
-    "legal.refundsDesc": "Wir bieten eine 14-t\u00E4gige Geld-zur\u00FCck-Garantie f\u00FCr alle kostenpflichtigen Abonnements. Danach sind keine R\u00FCckerstattungen m\u00F6glich.",
+    "legal.refundsDesc": "Wir bieten eine 30-t\u00E4gige Geld-zur\u00FCck-Garantie f\u00FCr alle kostenpflichtigen Abonnements. Danach sind keine R\u00FCckerstattungen m\u00F6glich.",
     "legal.liability": "Haftungsbeschr\u00E4nkung",
     "legal.liabilityDesc": "StencilCraft wird \u201Eas is\u201C bereitgestellt. Wir haften nicht f\u00FCr Sch\u00E4den, die durch die Nutzung des Services entstehen, soweit gesetzlich zul\u00E4ssig.",
 
@@ -440,13 +447,13 @@ const translations = {
     // Legal - Refund
     "legal.refundTitle": "R\u00FCckerstattungsrichtlinie",
     "legal.refundPolicy": "Unsere Garantie",
-    "legal.refundPolicyDesc": "Wir bieten eine 14-t\u00E4gige Geld-zur\u00FCck-Garantie f\u00FCr alle kostenpflichtigen Abonnements.",
+    "legal.refundPolicyDesc": "Wir bieten eine 30-t\u00E4gige Geld-zur\u00FCck-Garantie f\u00FCr alle kostenpflichtigen Abonnements.",
     "legal.refundEligibility": "Anspruchsberechtigung",
-    "legal.refundEligibilityDesc": "Sie k\u00F6nnen innerhalb von 14 Tagen nach Abschluss Ihres Abonnements eine vollst\u00E4ndige R\u00FCckerstattung beantragen, unabh\u00E4ngig vom Grund.",
+    "legal.refundEligibilityDesc": "Sie k\u00F6nnen innerhalb von 30 Tagen nach Abschluss Ihres Abonnements eine vollst\u00E4ndige R\u00FCckerstattung beantragen, unabh\u00E4ngig vom Grund.",
     "legal.refundProcess": "Ablauf",
     "legal.refundProcessDesc": "Kontaktieren Sie uns per E-Mail unter support@stencilcraft.app. R\u00FCckerstattungen werden innerhalb von 5-10 Werktagen bearbeitet.",
     "legal.refundExceptions": "Ausnahmen",
-    "legal.refundExceptionsDesc": "Nach Ablauf der 14-Tage-Frist sind keine R\u00FCckerstattungen m\u00F6glich. Bei Missbrauch des Services behalten wir uns das Recht vor, R\u00FCckerstattungen abzulehnen.",
+    "legal.refundExceptionsDesc": "Nach Ablauf der 30-Tage-Frist sind keine R\u00FCckerstattungen m\u00F6glich. Bei Missbrauch des Services behalten wir uns das Recht vor, R\u00FCckerstattungen abzulehnen.",
 
   },
 
@@ -474,16 +481,17 @@ const translations = {
     "hero.subtitle": "Professional tattoo stencils in seconds. Clearer lines for better tattoos and happier clients.",
     "hero.styles": "Styles",
     "hero.avgTime": "Avg Time",
-    "hero.free": "Free",
+    "hero.startingAt": "From \u20AC0",
+    "hero.pricing": "Pricing",
 
     // Upload
     "upload.title": "Upload Image",
-    "upload.subtitle": "JPG, PNG, WEBP up to 10MB",
+    "upload.subtitle": "JPG, PNG, WEBP, TIFF up to 10MB",
     "upload.dropzone": "Drag image here or click",
     "upload.dropzoneAlt": "or select a file",
     "upload.dropzoneAria": "Upload image \u2014 click or drag a file here",
     "upload.invalidFormat": "Invalid Format",
-    "upload.invalidFormatDesc": "Please upload an image file (JPG, PNG, WEBP)",
+    "upload.invalidFormatDesc": "Please upload an image file (JPG, PNG, WEBP, TIFF)",
     "upload.tooLarge": "File Too Large",
     "upload.tooLargeDesc": "File must be 10MB or smaller",
     "upload.success": "Image Uploaded",
@@ -705,6 +713,10 @@ const translations = {
     "showcase.realismDesc": "Highly detailed realistic subjects \u2014 for demanding tattoo designs.",
     "showcase.originalPhoto": "Original Photo",
     "showcase.stencilResult": "Stencil Result",
+    "showcase.hatchingMode": "Hatching",
+    "showcase.solidMode": "Solid",
+    "showcase.hatchingResult": "Hatching Result",
+    "showcase.solidResult": "Solid Result",
     "showcase.uploadNote": "Upload your own image to see the result",
 
     // Team
@@ -742,7 +754,7 @@ const translations = {
     "faq.q1": "How does stencil generation work?",
     "faq.a1": "Upload a photo, choose a style, and our AI-powered image processing creates a print-ready tattoo stencil in seconds with clean lines and optimal contrast.",
     "faq.q2": "What image formats are supported?",
-    "faq.a2": "We support JPG, PNG, and WEBP formats up to 10MB. For best results, use high-resolution images with clear contrasts.",
+    "faq.a2": "We support JPG, PNG, WEBP, and TIFF formats up to 10MB. For best results, use high-resolution images with clear contrasts.",
     "faq.q3": "Can I use the stencil in Procreate?",
     "faq.a3": "Yes! Export your stencil as a PSD file with layers that can be opened directly in Procreate. The original layer serves as reference.",
     "faq.q4": "What's the difference between styles?",
@@ -758,7 +770,7 @@ const translations = {
     "faq.q9": "Does StencilCraft support SVG export?",
     "faq.a9": "Yes, Pro and Studio users can export stencils as SVG \u2014 perfect for cutting machines and scalable output at any size.",
     "faq.q10": "Is there a money-back guarantee?",
-    "faq.a10": "Yes, we offer a 14-day money-back guarantee. If you're not satisfied, we'll fully refund your payment.",
+    "faq.a10": "Yes, we offer a 30-day money-back guarantee. If you're not satisfied, we'll fully refund your payment.",
 
     // Social Proof
     "social.artists": "Tattoo Artists",
@@ -804,6 +816,8 @@ const translations = {
     "pricing.yearly": "Yearly",
     "pricing.yearlySave": "Save 2 months with annual billing",
     "pricing.perMonthYearly": "/month (billed yearly)",
+    "pricing.freeTrial": "3-day free trial",
+    "pricing.creditRollover": "Credit rollover (up to 50%)",
 
     // Legal - Privacy
     "legal.privacyTitle": "Privacy Policy",
@@ -838,7 +852,7 @@ const translations = {
     "legal.intellectualProperty": "Intellectual Property",
     "legal.intellectualPropertyDesc": "You retain all rights to your uploaded images and generated stencils. StencilCraft grants you a license to use the service according to your subscription.",
     "legal.refunds": "Refunds",
-    "legal.refundsDesc": "We offer a 14-day money-back guarantee for all paid subscriptions. No refunds are possible after that period.",
+    "legal.refundsDesc": "We offer a 30-day money-back guarantee for all paid subscriptions. No refunds are possible after that period.",
     "legal.liability": "Limitation of Liability",
     "legal.liabilityDesc": "StencilCraft is provided \u201Cas is\u201D. We are not liable for damages arising from the use of the service, to the extent permitted by law.",
 
@@ -889,13 +903,13 @@ const translations = {
     // Legal - Refund
     "legal.refundTitle": "Refund Policy",
     "legal.refundPolicy": "Our Guarantee",
-    "legal.refundPolicyDesc": "We offer a 14-day money-back guarantee for all paid subscriptions.",
+    "legal.refundPolicyDesc": "We offer a 30-day money-back guarantee for all paid subscriptions.",
     "legal.refundEligibility": "Eligibility",
-    "legal.refundEligibilityDesc": "You can request a full refund within 14 days of subscribing, regardless of the reason.",
+    "legal.refundEligibilityDesc": "You can request a full refund within 30 days of subscribing, regardless of the reason.",
     "legal.refundProcess": "Process",
     "legal.refundProcessDesc": "Contact us via email at support@stencilcraft.app. Refunds are processed within 5-10 business days.",
     "legal.refundExceptions": "Exceptions",
-    "legal.refundExceptionsDesc": "No refunds are possible after the 14-day period. We reserve the right to deny refunds in cases of service abuse.",
+    "legal.refundExceptionsDesc": "No refunds are possible after the 30-day period. We reserve the right to deny refunds in cases of service abuse.",
   },
 } as const;
 

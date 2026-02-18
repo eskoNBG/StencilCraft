@@ -55,6 +55,9 @@ export async function POST(request: NextRequest) {
       success_url: `${process.env.NEXTAUTH_URL}/account?success=true`,
       cancel_url: `${process.env.NEXTAUTH_URL}/pricing?canceled=true`,
       metadata: { userId: session.user.id, tier, billingPeriod },
+      subscription_data: {
+        trial_period_days: 3,
+      },
     });
 
     return NextResponse.json({ url: checkoutSession.url });

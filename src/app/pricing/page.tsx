@@ -52,7 +52,9 @@ export default function PricingPage() {
   ];
 
   const proFeatures = [
+    { label: t("pricing.freeTrial"), included: true },
     { label: t("pricing.feat.stencilsMonth", { count: "100" }), included: true },
+    { label: t("pricing.creditRollover"), included: true },
     { label: t("pricing.feat.allStyles"), included: true },
     { label: t("pricing.feat.gallery"), included: true },
     { label: t("pricing.feat.svgExport"), included: true },
@@ -62,6 +64,7 @@ export default function PricingPage() {
   ];
 
   const studioFeatures = [
+    { label: t("pricing.freeTrial"), included: true },
     { label: t("pricing.feat.unlimited"), included: true },
     { label: t("pricing.feat.allStyles"), included: true },
     { label: t("pricing.feat.gallery"), included: true },

@@ -266,11 +266,22 @@ export async function POST(request: NextRequest) {
           : now.getMonth() !== resetAt.getMonth() || now.getFullYear() !== resetAt.getFullYear(); // monthly reset
 
         if (needsReset) {
+          // Credit rollover: carry over unused credits (up to 50% of limit) for paid plans
+          let rolloverCredits = 0;
+          if (userTier !== "free") {
+            const tierFeatures = PRICING_TIERS[userTier].features as Record<string, unknown>;
+            const monthlyLimit = (tierFeatures.stencilsPerMonth as number) ?? Infinity;
+            if (monthlyLimit !== Infinity) {
+              const unused = Math.max(0, monthlyLimit - subscription.creditsUsed);
+              rolloverCredits = Math.min(unused, Math.floor(monthlyLimit * 0.5));
+            }
+          }
+
           await db.subscription.update({
             where: { userId: session.user.id },
-            data: { creditsUsed: 0, creditsResetAt: now },
+            data: { creditsUsed: -rolloverCredits, creditsResetAt: now },
           });
-          subscription.creditsUsed = 0;
+          subscription.creditsUsed = -rolloverCredits;
         }
 
         // Check credit limits

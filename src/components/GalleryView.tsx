@@ -5,7 +5,8 @@ import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Image as ImageIcon, Wand2, Download, Heart, Trash2, LogIn } from "lucide-react";
+import { Image as ImageIcon, Wand2, Download, Heart, Trash2, LogIn, Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { STENCIL_STYLES } from "@/lib/constants";
 import { useLocale } from "@/hooks/useLocale";
 import type { TranslationKey } from "@/lib/i18n";
@@ -14,9 +15,26 @@ import Link from "next/link";
 
 interface GalleryViewProps {
   gallery: StencilResult[];
+  isLoading?: boolean;
   onToggleFavorite: (id: string) => void;
   onDelete: (id: string) => void;
   onSwitchToCreate: () => void;
+}
+
+function GallerySkeleton() {
+  return (
+    <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {[...Array(8)].map((_, i) => (
+        <div key={i} className="glass border-primary/20 rounded-lg overflow-hidden">
+          <Skeleton className="aspect-square w-full" />
+          <div className="p-3 flex items-center justify-between">
+            <Skeleton className="h-5 w-16 rounded-full" />
+            <Skeleton className="h-4 w-20" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function GalleryCard({
@@ -132,7 +150,7 @@ function AuthGate() {
   );
 }
 
-export function GalleryView({ gallery, onToggleFavorite, onDelete, onSwitchToCreate }: GalleryViewProps) {
+export function GalleryView({ gallery, isLoading, onToggleFavorite, onDelete, onSwitchToCreate }: GalleryViewProps) {
   const { t } = useLocale();
   const { data: session } = useSession();
 
@@ -148,7 +166,9 @@ export function GalleryView({ gallery, onToggleFavorite, onDelete, onSwitchToCre
         <p className="text-muted-foreground">{t("gallery.subtitle")}</p>
       </div>
 
-      {gallery.length === 0 ? (
+      {isLoading ? (
+        <GallerySkeleton />
+      ) : gallery.length === 0 ? (
         <Card className="glass border-primary/20">
           <CardContent className="flex flex-col items-center justify-center py-16">
             <ImageIcon className="w-16 h-16 text-muted-foreground/50 mb-4" />
