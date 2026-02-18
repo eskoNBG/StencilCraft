@@ -19,8 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Sparkles, FileImage, Layers, FileDown } from "lucide-react";
+import { Sparkles, FileImage, Layers, FileDown, FileType } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLocale } from "@/hooks/useLocale";
 import {
   PAPER_SIZES,
   createPsdWithLayers,
@@ -31,6 +32,7 @@ import {
   type DPIOption,
   type ExportOptions,
 } from "@/lib/psd-export";
+import { convertToSvg, downloadSvg } from "@/lib/svg-export";
 import type { StencilResult } from "@/lib/types";
 
 interface ExportDialogProps {
@@ -40,10 +42,11 @@ interface ExportDialogProps {
 
 export function ExportDialog({ currentResult, uploadedImage }: ExportDialogProps) {
   const { toast } = useToast();
+  const { t } = useLocale();
   const [open, setOpen] = useState(false);
   const [exportPaperSize, setExportPaperSize] = useState<PaperSizeKey>("original");
   const [exportDpi, setExportDpi] = useState<DPIOption>(300);
-  const [exportFormat, setExportFormat] = useState<"png" | "psd">("png");
+  const [exportFormat, setExportFormat] = useState<"png" | "psd" | "svg">("png");
   const [exportIncludeOriginal, setExportIncludeOriginal] = useState(true);
   const [exportIncludeStencil, setExportIncludeStencil] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
@@ -51,27 +54,40 @@ export function ExportDialog({ currentResult, uploadedImage }: ExportDialogProps
   const handleExport = async () => {
     setIsExporting(true);
     try {
-      const options: ExportOptions = {
-        paperSize: exportPaperSize,
-        dpi: exportDpi,
-        format: exportFormat,
-        includeOriginal: exportIncludeOriginal,
-        includeStencil: exportIncludeStencil,
-      };
-
-      if (exportFormat === "psd") {
+      if (exportFormat === "svg") {
+        const svgString = await convertToSvg(currentResult.stencilImage);
+        downloadSvg(svgString, generateFilename("svg", currentResult.style));
+        toast({
+          title: t("export.svgSuccess"),
+          description: t("export.svgSuccessDesc"),
+        });
+      } else if (exportFormat === "psd") {
+        const options: ExportOptions = {
+          paperSize: exportPaperSize,
+          dpi: exportDpi,
+          format: "psd",
+          includeOriginal: exportIncludeOriginal,
+          includeStencil: exportIncludeStencil,
+        };
         const psdBuffer = await createPsdWithLayers(uploadedImage, currentResult.stencilImage, options);
         const blob = new Blob([psdBuffer], { type: "image/vnd.adobe.photoshop" });
         downloadFile(blob, generateFilename("psd", currentResult.style));
         toast({
-          title: "PSD exportiert!",
-          description: "Die Datei kann direkt in Procreate geöffnet werden",
+          title: t("export.psdSuccess"),
+          description: t("export.psdSuccessDesc"),
         });
       } else {
+        const options: ExportOptions = {
+          paperSize: exportPaperSize,
+          dpi: exportDpi,
+          format: "png",
+          includeOriginal: exportIncludeOriginal,
+          includeStencil: exportIncludeStencil,
+        };
         const blob = await exportAsPng(currentResult.stencilImage, options);
         downloadFile(blob, generateFilename("png", currentResult.style));
         toast({
-          title: "PNG exportiert!",
+          title: t("export.pngSuccess"),
           description: `${PAPER_SIZES[exportPaperSize].name} @ ${exportDpi} DPI`,
         });
       }
@@ -80,8 +96,8 @@ export function ExportDialog({ currentResult, uploadedImage }: ExportDialogProps
     } catch (error) {
       console.error("Export error:", error);
       toast({
-        title: "Export fehlgeschlagen",
-        description: "Bitte versuchen Sie es erneut",
+        title: t("export.error"),
+        description: t("export.errorDesc"),
         variant: "destructive",
       });
     } finally {
@@ -94,106 +110,121 @@ export function ExportDialog({ currentResult, uploadedImage }: ExportDialogProps
       <DialogTrigger asChild>
         <Button
           variant="outline"
-          className="h-12 px-6 border-pink-500/50 hover:bg-pink-500/10 bg-gradient-to-r from-pink-500/10 to-purple-500/10"
+          className="h-12 px-6 border-primary/50 hover:bg-primary/10"
         >
           <Layers className="w-5 h-5 mr-2" />
-          Procreate
+          {t("export.title")}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md bg-zinc-900 border-purple-500/30">
+      <DialogContent className="max-w-md bg-zinc-900 border-primary/30">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
-            <Layers className="w-5 h-5 text-purple-400" />
-            Export für Procreate
+            <Layers className="w-5 h-5 text-primary" />
+            {t("export.title")}
           </DialogTitle>
           <DialogDescription>
-            PSD-Datei mit Ebenen für nahtlose Procreate-Integration
+            {t("export.subtitle")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5 py-4">
           {/* Format Selection */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium">Format</Label>
-            <div className="grid grid-cols-2 gap-3">
+            <Label className="text-sm font-medium">{t("export.format")}</Label>
+            <div className="grid grid-cols-3 gap-3">
               <button
                 onClick={() => setExportFormat("png")}
                 className={`p-4 rounded-xl border-2 transition-all ${
                   exportFormat === "png"
-                    ? "border-purple-500 bg-purple-500/20"
-                    : "border-zinc-700 hover:border-purple-500/50"
+                    ? "border-primary bg-primary/20"
+                    : "border-zinc-700 hover:border-primary/50"
                 }`}
               >
-                <FileImage className="w-6 h-6 mx-auto mb-2 text-purple-400" />
-                <div className="font-medium">PNG</div>
-                <div className="text-xs text-muted-foreground">Einzeldatei</div>
+                <FileImage className="w-6 h-6 mx-auto mb-2 text-primary" />
+                <div className="font-medium text-sm">PNG</div>
+                <div className="text-xs text-muted-foreground">{t("export.singleFile")}</div>
               </button>
               <button
                 onClick={() => setExportFormat("psd")}
                 className={`p-4 rounded-xl border-2 transition-all ${
                   exportFormat === "psd"
-                    ? "border-pink-500 bg-pink-500/20"
-                    : "border-zinc-700 hover:border-pink-500/50"
+                    ? "border-primary bg-primary/20"
+                    : "border-zinc-700 hover:border-primary/50"
                 }`}
               >
-                <Layers className="w-6 h-6 mx-auto mb-2 text-pink-400" />
-                <div className="font-medium">PSD</div>
-                <div className="text-xs text-muted-foreground">Mit Ebenen</div>
+                <Layers className="w-6 h-6 mx-auto mb-2 text-primary" />
+                <div className="font-medium text-sm">PSD</div>
+                <div className="text-xs text-muted-foreground">{t("export.withLayers")}</div>
+              </button>
+              <button
+                onClick={() => setExportFormat("svg")}
+                className={`p-4 rounded-xl border-2 transition-all ${
+                  exportFormat === "svg"
+                    ? "border-primary bg-primary/20"
+                    : "border-zinc-700 hover:border-primary/50"
+                }`}
+              >
+                <FileType className="w-6 h-6 mx-auto mb-2 text-primary" />
+                <div className="font-medium text-sm">SVG</div>
+                <div className="text-xs text-muted-foreground">{t("export.vector")}</div>
               </button>
             </div>
           </div>
 
-          {/* Paper Size */}
-          <div className="space-y-3">
-            <Label className="text-sm font-medium">Papierformat</Label>
-            <Select value={exportPaperSize} onValueChange={(v) => setExportPaperSize(v as PaperSizeKey)}>
-              <SelectTrigger className="bg-zinc-800 border-zinc-700">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-zinc-800 border-zinc-700">
-                {Object.entries(PAPER_SIZES).map(([key, size]) => (
-                  <SelectItem key={key} value={key}>
-                    {size.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Paper Size & DPI (not for SVG) */}
+          {exportFormat !== "svg" && (
+            <>
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">{t("export.paperSize")}</Label>
+                <Select value={exportPaperSize} onValueChange={(v) => setExportPaperSize(v as PaperSizeKey)}>
+                  <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-zinc-800 border-zinc-700">
+                    {Object.entries(PAPER_SIZES).map(([key, size]) => (
+                      <SelectItem key={key} value={key}>
+                        {size.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          {/* DPI Selection */}
-          <div className="space-y-3">
-            <Label className="text-sm font-medium">Auflösung (DPI)</Label>
-            <div className="grid grid-cols-3 gap-3">
-              {([72, 150, 300] as DPIOption[]).map((dpi) => (
-                <button
-                  key={dpi}
-                  onClick={() => setExportDpi(dpi)}
-                  className={`p-3 rounded-xl border-2 transition-all ${
-                    exportDpi === dpi
-                      ? "border-purple-500 bg-purple-500/20"
-                      : "border-zinc-700 hover:border-purple-500/50"
-                  }`}
-                >
-                  <div className="font-bold">{dpi}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {dpi === 72 ? "Web" : dpi === 150 ? "Mittel" : "Print"}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">{t("export.resolution")}</Label>
+                <div className="grid grid-cols-3 gap-3">
+                  {([72, 150, 300] as DPIOption[]).map((dpi) => (
+                    <button
+                      key={dpi}
+                      onClick={() => setExportDpi(dpi)}
+                      className={`p-3 rounded-xl border-2 transition-all ${
+                        exportDpi === dpi
+                          ? "border-primary bg-primary/20"
+                          : "border-zinc-700 hover:border-primary/50"
+                      }`}
+                    >
+                      <div className="font-bold">{dpi}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {dpi === 72 ? t("export.web") : dpi === 150 ? t("export.medium") : t("export.print")}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Layer Options (PSD only) */}
           {exportFormat === "psd" && (
             <div className="space-y-3 p-4 bg-zinc-800/50 rounded-xl">
-              <Label className="text-sm font-medium">Ebenen</Label>
+              <Label className="text-sm font-medium">{t("export.layers")}</Label>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">Stencil-Ebene</span>
+                  <span className="text-sm">{t("export.stencilLayer")}</span>
                   <Switch checked={exportIncludeStencil} onCheckedChange={setExportIncludeStencil} />
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">Original-Ebene (Referenz)</span>
+                  <span className="text-sm">{t("export.originalLayer")}</span>
                   <Switch checked={exportIncludeOriginal} onCheckedChange={setExportIncludeOriginal} />
                 </div>
               </div>
@@ -204,17 +235,21 @@ export function ExportDialog({ currentResult, uploadedImage }: ExportDialogProps
           <Button
             onClick={handleExport}
             disabled={isExporting || (exportFormat === "psd" && !exportIncludeStencil && !exportIncludeOriginal)}
-            className="w-full h-12 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+            className="w-full h-12 bg-gradient-to-r from-[var(--gradient-from)] to-[var(--gradient-to)] hover:opacity-90"
           >
             {isExporting ? (
               <>
                 <Sparkles className="w-5 h-5 mr-2 animate-spin" />
-                Wird exportiert...
+                {t("export.exporting")}
               </>
             ) : (
               <>
                 <FileDown className="w-5 h-5 mr-2" />
-                {exportFormat === "psd" ? "PSD exportieren" : "PNG exportieren"}
+                {exportFormat === "psd"
+                  ? t("export.exportPsd")
+                  : exportFormat === "svg"
+                  ? t("export.exportSvg")
+                  : t("export.exportPng")}
               </>
             )}
           </Button>

@@ -13,6 +13,7 @@ import {
   Check,
 } from "lucide-react";
 import type { StencilResult } from "@/lib/types";
+import { useLocale } from "@/hooks/useLocale";
 
 interface ImagePreviewProps {
   uploadedImage: string;
@@ -45,6 +46,8 @@ export function ImagePreview({
   flipV,
   onFlipVChange,
 }: ImagePreviewProps) {
+  const { t } = useLocale();
+
   const getImageTransform = () => {
     let transform = `scale(${zoom})`;
     if (flipH) transform += " scaleX(-1)";
@@ -58,31 +61,26 @@ export function ImagePreview({
         {/* Comparison Slider View */}
         {currentResult && showComparison ? (
           <div className="relative w-full h-full">
-            {/* Before Image (Original) with opacity control */}
             <img
               src={uploadedImage}
-              alt="Original"
+              alt={t("preview.original")}
               className="absolute inset-0 w-full h-full object-contain"
               style={{
                 transform: getImageTransform(),
                 opacity: originalOpacity / 100,
               }}
             />
-
-            {/* After Image (Stencil) with clip */}
             <div
               className="absolute inset-0 overflow-hidden"
               style={{ clipPath: `inset(0 ${100 - comparisonPosition}% 0 0)` }}
             >
               <img
                 src={currentResult.stencilImage}
-                alt="Stencil"
+                alt={t("preview.stencil")}
                 className="w-full h-full object-contain"
                 style={{ transform: getImageTransform() }}
               />
             </div>
-
-            {/* Slider */}
             <div
               className="absolute top-0 bottom-0 w-1 bg-white cursor-ew-resize z-10"
               style={{ left: `${comparisonPosition}%` }}
@@ -94,8 +92,6 @@ export function ImagePreview({
                 </div>
               </div>
             </div>
-
-            {/* Slider track for interaction */}
             <input
               type="range"
               min="0"
@@ -103,17 +99,15 @@ export function ImagePreview({
               value={comparisonPosition}
               onChange={(e) => onComparisonPositionChange(Number(e.target.value))}
               className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize z-20"
+              aria-label={t("preview.comparisonAria")}
             />
-
-            {/* Labels */}
-            <Badge className="absolute top-2 left-2 bg-purple-500/80">Original</Badge>
+            <Badge className="absolute top-2 left-2 bg-primary/80">{t("preview.original")}</Badge>
             <Badge className="absolute top-2 right-2 bg-green-500/80">
               <Check className="w-3 h-3 mr-1" />
-              Stencil
+              {t("preview.stencil")}
             </Badge>
           </div>
         ) : (
-          /* Normal single image view */
           <>
             <img
               src={currentResult?.stencilImage || uploadedImage}
@@ -124,7 +118,7 @@ export function ImagePreview({
             {currentResult && (
               <Badge className="absolute top-2 right-2 bg-green-500/80">
                 <Check className="w-3 h-3 mr-1" />
-                Stencil
+                {t("preview.stencil")}
               </Badge>
             )}
           </>
@@ -139,7 +133,7 @@ export function ImagePreview({
             <path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65" />
             <path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65" />
           </svg>
-          <span className="text-xs text-muted-foreground min-w-[80px]">Original Deckkraft</span>
+          <span className="text-xs text-muted-foreground min-w-[80px]">{t("preview.originalOpacity")}</span>
           <Slider
             min={0}
             max={100}
@@ -154,29 +148,33 @@ export function ImagePreview({
 
       {/* Image Controls */}
       <div className="flex items-center justify-center gap-2 mt-4">
-        <Button variant="outline" size="sm" onClick={() => onZoomChange(Math.max(0.5, zoom - 0.1))}>
+        <Button variant="outline" size="sm" aria-label={t("preview.zoomOut")} onClick={() => onZoomChange(Math.max(0.5, zoom - 0.1))}>
           <ZoomOut className="w-4 h-4" />
         </Button>
-        <span className="text-sm text-muted-foreground w-16 text-center">
+        <span className="text-sm text-muted-foreground w-16 text-center" aria-live="polite">
           {Math.round(zoom * 100)}%
         </span>
-        <Button variant="outline" size="sm" onClick={() => onZoomChange(Math.min(2, zoom + 0.1))}>
+        <Button variant="outline" size="sm" aria-label={t("preview.zoomIn")} onClick={() => onZoomChange(Math.min(2, zoom + 0.1))}>
           <ZoomIn className="w-4 h-4" />
         </Button>
         <Separator orientation="vertical" className="h-6 mx-2" />
         <Button
           variant={flipH ? "default" : "outline"}
           size="sm"
+          aria-label={t("preview.flipH")}
+          aria-pressed={flipH}
           onClick={() => onFlipHChange(!flipH)}
-          className={flipH ? "bg-purple-600" : ""}
+          className={flipH ? "bg-primary" : ""}
         >
           <FlipHorizontal className="w-4 h-4" />
         </Button>
         <Button
           variant={flipV ? "default" : "outline"}
           size="sm"
+          aria-label={t("preview.flipV")}
+          aria-pressed={flipV}
           onClick={() => onFlipVChange(!flipV)}
-          className={flipV ? "bg-purple-600" : ""}
+          className={flipV ? "bg-primary" : ""}
         >
           <FlipVertical className="w-4 h-4" />
         </Button>
@@ -184,6 +182,7 @@ export function ImagePreview({
         <Button
           variant="outline"
           size="sm"
+          aria-label={t("preview.reset")}
           onClick={() => {
             onZoomChange(1);
             onFlipHChange(false);

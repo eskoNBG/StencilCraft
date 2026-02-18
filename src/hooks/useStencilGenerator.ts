@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useLocale } from "@/hooks/useLocale";
 import type { StencilResult } from "@/lib/types";
 
 interface GenerateParams {
@@ -28,6 +29,7 @@ function dataURLtoFile(dataURL: string, filename: string): File {
 
 export function useStencilGenerator() {
   const { toast } = useToast();
+  const { t } = useLocale();
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [statusMessage, setStatusMessage] = useState("");
@@ -50,15 +52,15 @@ export function useStencilGenerator() {
 
     setIsGenerating(true);
     setProgress(0);
-    setStatusMessage("Starte Generierung...");
+    setStatusMessage(t("gen.starting"));
 
     // Animated progress messages
     const progressMessages = [
-      { progress: 15, message: "Initialisiere AI..." },
-      { progress: 30, message: "Analysiere Stil..." },
-      { progress: 50, message: "Generiere Stencil..." },
-      { progress: 70, message: "Verarbeite Bild..." },
-      { progress: 85, message: "Finalisiere..." },
+      { progress: 15, message: t("gen.initAI") },
+      { progress: 30, message: t("gen.analyzingStyle") },
+      { progress: 50, message: t("gen.generating") },
+      { progress: 70, message: t("gen.processing") },
+      { progress: 85, message: t("gen.finalizing") },
     ];
 
     let messageIndex = 0;
@@ -92,12 +94,21 @@ export function useStencilGenerator() {
 
       const startData = await startResponse.json();
 
+      if (startResponse.status === 429) {
+        const retryAfter = startResponse.headers.get("Retry-After");
+        throw new Error(
+          retryAfter
+            ? t("gen.rateLimitWait", { seconds: retryAfter })
+            : t("gen.rateLimitGeneric")
+        );
+      }
+
       if (!startData.success || !startData.jobId) {
         throw new Error(startData.error || "Failed to start generation");
       }
 
       const jobId = startData.jobId;
-      setStatusMessage("Generiere Stencil...");
+      setStatusMessage(t("gen.generating"));
 
       // Wait for result via SSE stream
       const result = await new Promise<StencilResult>((resolve, reject) => {
@@ -120,7 +131,7 @@ export function useStencilGenerator() {
 
               clearInterval(progressInterval);
               setProgress(100);
-              setStatusMessage("Fertig!");
+              setStatusMessage(t("gen.done"));
 
               const stencilResult: StencilResult = {
                 id: Date.now().toString(),
@@ -155,13 +166,13 @@ export function useStencilGenerator() {
         eventSource.onerror = () => {
           eventSource.close();
           signal.removeEventListener("abort", onAbort);
-          reject(new Error("Verbindung zum Server verloren"));
+          reject(new Error(t("gen.connectionLost")));
         };
       });
 
       toast({
-        title: "Stencil erstellt!",
-        description: "Ihr Tattoo-Stencil wurde erfolgreich generiert",
+        title: t("gen.success"),
+        description: t("gen.successDesc"),
       });
       return result;
 
@@ -174,8 +185,8 @@ export function useStencilGenerator() {
       }
 
       toast({
-        title: "Fehler",
-        description: error instanceof Error ? error.message : "Das Stencil konnte nicht erstellt werden.",
+        title: t("gen.error"),
+        description: error instanceof Error ? error.message : t("gen.errorDesc"),
         variant: "destructive",
       });
       return null;
@@ -184,7 +195,7 @@ export function useStencilGenerator() {
       setStatusMessage("");
       setTimeout(() => setProgress(0), 500);
     }
-  }, [toast]);
+  }, [toast, t]);
 
   const cancelGeneration = useCallback(() => {
     abortRef.current?.abort();

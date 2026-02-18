@@ -52,10 +52,9 @@ export type DPIOption = 72 | 150 | 300;
 export interface ExportOptions {
   paperSize: PaperSizeKey;
   dpi: DPIOption;
-  format: 'png' | 'psd';
+  format: 'png' | 'psd' | 'svg';
   includeOriginal: boolean;
   includeStencil: boolean;
-  lineColor?: string;
 }
 
 /**
@@ -77,7 +76,8 @@ function createCanvas(img: HTMLImageElement, targetWidth: number, targetHeight: 
   const canvas = document.createElement('canvas');
   canvas.width = targetWidth;
   canvas.height = targetHeight;
-  const ctx = canvas.getContext('2d')!;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas 2D context not available');
   
   // Calculate scaling to fit image while preserving aspect ratio
   const scale = Math.min(targetWidth / img.width, targetHeight / img.height);
@@ -94,14 +94,6 @@ function createCanvas(img: HTMLImageElement, targetWidth: number, targetHeight: 
   ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
   
   return canvas;
-}
-
-/**
- * Get image data from a canvas
- */
-function getImageData(canvas: HTMLCanvasElement): ImageData {
-  const ctx = canvas.getContext('2d')!;
-  return ctx.getImageData(0, 0, canvas.width, canvas.height);
 }
 
 /**
@@ -222,8 +214,8 @@ export function downloadFile(blob: Blob, filename: string) {
 /**
  * Generate filename with timestamp
  */
-export function generateFilename(format: 'png' | 'psd', style: string): string {
+export function generateFilename(format: 'png' | 'psd' | 'svg', style: string): string {
   const date = new Date();
   const timestamp = date.toISOString().slice(0, 10);
-  return `inkcraft-stencil-${style}-${timestamp}.${format}`;
+  return `stencilcraft-stencil-${style}-${timestamp}.${format}`;
 }

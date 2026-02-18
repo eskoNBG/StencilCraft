@@ -6,6 +6,12 @@ import { checkRateLimit } from "@/lib/rate-limit";
 // Rate limit: 10 generations per minute per IP
 const RATE_LIMIT = { max: 10, windowMs: 60_000 };
 
+// Stencil processor service URL (OpenCV-based)
+const STENCIL_SERVICE_URL = process.env.STENCIL_SERVICE_URL || "http://localhost:3005/generate";
+
+// Timeout for external service call (2 minutes)
+const SERVICE_TIMEOUT_MS = 120_000;
+
 // Zod schema for generation options (sent as JSON fields in FormData or JSON body)
 const optionsSchema = z.object({
   style: z.enum(["outline", "simple", "detailed", "hatching", "solid"]).default("outline"),
@@ -16,8 +22,50 @@ const optionsSchema = z.object({
   transparentBg: z.boolean().default(false),
 });
 
-// Stencil processor service URL (OpenCV-based)
-const STENCIL_SERVICE_URL = "http://localhost:3005/generate";
+const MAX_RETRIES = 3;
+const RETRY_DELAYS = [1000, 2000, 4000]; // exponential backoff
+
+async function callServiceWithRetry(
+  body: Record<string, unknown>,
+  retries = MAX_RETRIES
+): Promise<{ success: boolean; stencilImage?: string; error?: string }> {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), SERVICE_TIMEOUT_MS);
+
+    try {
+      const response = await fetch(STENCIL_SERVICE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        throw new Error(`Service returned HTTP ${response.status}`);
+      }
+
+      try {
+        return await response.json();
+      } catch {
+        throw new Error("Service returned invalid JSON");
+      }
+    } catch (error) {
+      clearTimeout(timeout);
+
+      const isLast = attempt === retries - 1;
+      if (isLast) throw error;
+
+      const delay = RETRY_DELAYS[attempt] || 4000;
+      console.log(`[Retry] Attempt ${attempt + 1} failed, retrying in ${delay}ms...`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
+  throw new Error("Max retries exceeded");
+}
 
 async function startGeneration(
   jobId: string,
@@ -32,23 +80,17 @@ async function startGeneration(
   try {
     console.log(`[Job ${jobId}] Processing ${style} style with OpenCV...`);
 
-    const response = await fetch(STENCIL_SERVICE_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        image: imageBase64,
-        style,
-        lineThickness,
-        contrast,
-        inverted,
-        lineColor,
-        transparentBg,
-      }),
+    const data = await callServiceWithRetry({
+      image: imageBase64,
+      style,
+      lineThickness,
+      contrast,
+      inverted,
+      lineColor,
+      transparentBg,
     });
 
-    const data = await response.json();
-
-    if (!data.success) {
+    if (!data.success || !data.stencilImage) {
       throw new Error(data.error || "Stencil generation failed");
     }
 
@@ -60,11 +102,40 @@ async function startGeneration(
     console.log(`[Job ${jobId}] Stencil completed`);
 
   } catch (error) {
-    console.error(`[Job ${jobId}] Error:`, error instanceof Error ? error.message : "Unknown");
-    await db.stencil.update({
-      where: { id: jobId },
-      data: { status: "failed" },
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error(`[Job ${jobId}] Error:`, message);
+
+    try {
+      await db.stencil.update({
+        where: { id: jobId },
+        data: { status: "failed", errorMessage: message },
+      });
+    } catch (dbError) {
+      console.error(`[Job ${jobId}] Failed to update DB:`, dbError);
+    }
+  }
+}
+
+/** Clean up stale jobs (older than 24h) and failed jobs (older than 1h) */
+async function cleanupStaleJobs() {
+  try {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+    const deleted = await db.stencil.deleteMany({
+      where: {
+        OR: [
+          { status: "processing", createdAt: { lt: oneDayAgo } },
+          { status: "failed", createdAt: { lt: oneHourAgo } },
+        ],
+      },
     });
+
+    if (deleted.count > 0) {
+      console.log(`[Cleanup] Removed ${deleted.count} stale jobs`);
+    }
+  } catch (error) {
+    console.error("[Cleanup] Error:", error);
   }
 }
 
@@ -73,6 +144,14 @@ async function fileToBase64(file: File): Promise<string> {
   const buffer = await file.arrayBuffer();
   const base64 = Buffer.from(buffer).toString("base64");
   return `data:${file.type};base64,${base64}`;
+}
+
+/** Build rate limit headers for responses */
+function rateLimitHeaders(remaining: number): Record<string, string> {
+  return {
+    "X-RateLimit-Limit": RATE_LIMIT.max.toString(),
+    "X-RateLimit-Remaining": remaining.toString(),
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -89,7 +168,7 @@ export async function POST(request: NextRequest) {
           status: 429,
           headers: {
             "Retry-After": Math.ceil(rateCheck.retryAfterMs / 1000).toString(),
-            "X-RateLimit-Remaining": "0",
+            ...rateLimitHeaders(0),
           },
         }
       );
@@ -136,13 +215,21 @@ export async function POST(request: NextRequest) {
 
     } else {
       // JSON body (backwards compatible)
-      const body = await request.json();
+      let body: Record<string, unknown>;
+      try {
+        body = await request.json();
+      } catch {
+        return NextResponse.json(
+          { success: false, error: "Invalid JSON in request body" },
+          { status: 400 }
+        );
+      }
 
       if (!body.image) {
         return NextResponse.json({ success: false, error: "No image provided" }, { status: 400 });
       }
 
-      imageBase64 = body.image;
+      imageBase64 = body.image as string;
 
       const parseResult = optionsSchema.safeParse(body);
       if (!parseResult.success) {
@@ -168,16 +255,16 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Start generation in background
+    // Start generation in background + opportunistic cleanup
     startGeneration(stencil.id, imageBase64, style, lineThickness, contrast, inverted, lineColor, transparentBg);
+    cleanupStaleJobs();
 
     console.log(`[Stencil API] Job ${stencil.id} started`);
 
-    return NextResponse.json({
-      success: true,
-      jobId: stencil.id,
-      message: "Generation started"
-    });
+    return NextResponse.json(
+      { success: true, jobId: stencil.id, message: "Generation started" },
+      { headers: rateLimitHeaders(rateCheck.remaining) }
+    );
 
   } catch (error) {
     console.error("[Stencil API] Error:", error);
@@ -207,7 +294,7 @@ export async function GET(request: NextRequest) {
         };
 
         let attempts = 0;
-        const maxAttempts = 120; // 2 minutes max (120 * 1s)
+        const maxAttempts = 60; // 2 minutes max (60 * 2s)
 
         while (attempts < maxAttempts) {
           try {
@@ -226,7 +313,7 @@ export async function GET(request: NextRequest) {
             }
 
             if (stencil.status === "failed") {
-              sendEvent({ status: "failed", error: "Generation failed" });
+              sendEvent({ status: "failed", error: stencil.errorMessage || "Generation failed" });
               controller.close();
               return;
             }
@@ -239,7 +326,7 @@ export async function GET(request: NextRequest) {
             return;
           }
 
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+          await new Promise((resolve) => setTimeout(resolve, 2000));
           attempts++;
         }
 

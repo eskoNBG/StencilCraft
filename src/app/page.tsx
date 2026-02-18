@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Upload, Sparkles, Download, Wand2, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Toaster } from "@/components/ui/toaster";
 import { useStencilGenerator } from "@/hooks/useStencilGenerator";
 import { useGallery } from "@/hooks/useGallery";
 import { Header } from "@/components/Header";
@@ -15,14 +15,20 @@ import { StyleSelector } from "@/components/StyleSelector";
 import { SettingsPanel } from "@/components/SettingsPanel";
 import { ExportDialog } from "@/components/ExportDialog";
 import { GalleryView } from "@/components/GalleryView";
+import { CropDialog } from "@/components/CropDialog";
+import { useLocale } from "@/hooks/useLocale";
 
 export default function Home() {
   const { toast } = useToast();
+  const { t } = useLocale();
+  const { data: session } = useSession();
   const { isGenerating, progress, statusMessage, currentResult, setCurrentResult, generateStencil } = useStencilGenerator();
   const { gallery, addToGallery, toggleFavorite, deleteFromGallery } = useGallery();
 
   // Upload state
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [rawUploadedImage, setRawUploadedImage] = useState<string | null>(null);
+  const [showCropDialog, setShowCropDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Settings state
@@ -47,25 +53,23 @@ export default function Home() {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      toast({ title: "Ungültiges Format", description: "Bitte laden Sie eine Bilddatei hoch (JPG, PNG, WEBP)", variant: "destructive" });
+      toast({ title: t("upload.invalidFormat"), description: t("upload.invalidFormatDesc"), variant: "destructive" });
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      toast({ title: "Datei zu groß", description: "Die Datei darf maximal 10MB groß sein", variant: "destructive" });
+      toast({ title: t("upload.tooLarge"), description: t("upload.tooLargeDesc"), variant: "destructive" });
       return;
     }
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      setUploadedImage(event.target?.result as string);
+      const imageData = event.target?.result as string;
+      setRawUploadedImage(imageData);
+      setShowCropDialog(true);
       setCurrentResult(null);
-      setFlipH(false);
-      setFlipV(false);
-      setZoom(1);
-      toast({ title: "Bild hochgeladen", description: "Wählen Sie einen Stil und generieren Sie Ihr Stencil" });
     };
     reader.readAsDataURL(file);
-  }, [toast, setCurrentResult]);
+  }, [toast, setCurrentResult, t]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -73,36 +77,68 @@ export default function Home() {
     if (file && file.type.startsWith("image/")) {
       const reader = new FileReader();
       reader.onload = (event) => {
-        setUploadedImage(event.target?.result as string);
+        const imageData = event.target?.result as string;
+        setRawUploadedImage(imageData);
+        setShowCropDialog(true);
         setCurrentResult(null);
       };
       reader.readAsDataURL(file);
     }
   }, [setCurrentResult]);
 
+  const handleCropComplete = useCallback((croppedImage: string) => {
+    setUploadedImage(croppedImage);
+    setRawUploadedImage(null);
+    setShowCropDialog(false);
+    setFlipH(false);
+    setFlipV(false);
+    setZoom(1);
+    toast({ title: t("upload.success"), description: t("upload.successDesc") });
+  }, [toast, t]);
+
+  const handleCropSkip = useCallback(() => {
+    setUploadedImage(rawUploadedImage);
+    setRawUploadedImage(null);
+    setShowCropDialog(false);
+    setFlipH(false);
+    setFlipV(false);
+    setZoom(1);
+    toast({ title: t("upload.success"), description: t("upload.successDesc") });
+  }, [rawUploadedImage, toast, t]);
+
   const handleGenerate = useCallback(async () => {
     if (!uploadedImage) {
-      toast({ title: "Kein Bild", description: "Bitte laden Sie zuerst ein Bild hoch", variant: "destructive" });
+      toast({ title: t("upload.noImage"), description: t("upload.noImageDesc"), variant: "destructive" });
       return;
     }
     const result = await generateStencil({ uploadedImage, selectedStyle, lineThickness, contrast, inverted, lineColor, transparentBg });
     if (result) addToGallery(result);
-  }, [uploadedImage, selectedStyle, lineThickness, contrast, inverted, lineColor, transparentBg, generateStencil, addToGallery]);
+  }, [uploadedImage, selectedStyle, lineThickness, contrast, inverted, lineColor, transparentBg, generateStencil, addToGallery, t]);
 
   const downloadStencil = useCallback(() => {
     if (!currentResult) return;
     const link = document.createElement("a");
     link.href = currentResult.stencilImage;
-    link.download = `inkcraft-stencil-${currentResult.style}-${Date.now()}.png`;
+    link.download = `stencilcraft-stencil-${currentResult.style}-${Date.now()}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast({ title: "Download gestartet", description: "Das Stencil wird heruntergeladen" });
-  }, [currentResult, toast]);
+    toast({ title: t("gen.downloadStarted"), description: t("gen.downloadDesc") });
+  }, [currentResult, toast, t]);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header activeTab={activeTab} onTabChange={setActiveTab} galleryCount={gallery.length} />
+
+      {/* Crop Dialog */}
+      {rawUploadedImage && (
+        <CropDialog
+          image={rawUploadedImage}
+          open={showCropDialog}
+          onCropComplete={handleCropComplete}
+          onSkip={handleCropSkip}
+        />
+      )}
 
       <main className="flex-1">
         {activeTab === "create" ? (
@@ -110,26 +146,26 @@ export default function Home() {
             {/* Hero Section */}
             <div className="text-center mb-12">
               <h2 className="text-4xl md:text-5xl font-bold mb-4">
-                Verwandle jedes Foto in ein{" "}
-                <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">
-                  perfektes Stencil
+                {t("hero.title1")}
+                <span className="theme-gradient-text">
+                  {t("hero.titleHighlight")}
                 </span>
               </h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Professionelle Tattoo-Schablonen in Sekunden. Klarere Linien für bessere Tattoos und zufriedenere Kunden.
+                {t("hero.subtitle")}
               </p>
               <div className="flex justify-center gap-8 mt-8">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-400">5</div>
-                  <div className="text-sm text-muted-foreground">Stile</div>
+                  <div className="text-2xl font-bold text-primary">5</div>
+                  <div className="text-sm text-muted-foreground">{t("hero.styles")}</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-400">&lt;5s</div>
-                  <div className="text-sm text-muted-foreground">Ø Zeit</div>
+                  <div className="text-2xl font-bold text-primary">&lt;5s</div>
+                  <div className="text-sm text-muted-foreground">{t("hero.avgTime")}</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-400">∞</div>
-                  <div className="text-sm text-muted-foreground">Kostenlos</div>
+                  <div className="text-2xl font-bold text-primary">&infin;</div>
+                  <div className="text-sm text-muted-foreground">{t("hero.free")}</div>
                 </div>
               </div>
             </div>
@@ -137,20 +173,20 @@ export default function Home() {
             <div className="grid lg:grid-cols-3 gap-8">
               {/* Upload & Preview */}
               <div className="lg:col-span-2 space-y-6">
-                <Card className="glass border-purple-500/20">
+                <Card className="glass border-primary/20">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Upload className="w-5 h-5 text-purple-400" />
-                      Bild hochladen
+                      <Upload className="w-5 h-5 text-primary" />
+                      {t("upload.title")}
                     </CardTitle>
-                    <CardDescription>JPG, PNG, WEBP bis 10MB</CardDescription>
+                    <CardDescription>{t("upload.subtitle")}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div
                       className={`relative border-2 border-dashed rounded-xl transition-all duration-300 ${
                         uploadedImage
-                          ? "border-purple-500/50 bg-purple-500/5"
-                          : "border-border hover:border-purple-500/30 hover:bg-purple-500/5"
+                          ? "border-primary/50 bg-primary/5"
+                          : "border-border hover:border-primary/30 hover:bg-primary/5"
                       }`}
                       onDrop={handleDrop}
                       onDragOver={(e) => e.preventDefault()}
@@ -173,14 +209,23 @@ export default function Home() {
                         />
                       ) : (
                         <div
-                          className="flex flex-col items-center justify-center py-16 cursor-pointer"
+                          className="flex flex-col items-center justify-center py-16 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-xl"
+                          role="button"
+                          tabIndex={0}
+                          aria-label={t("upload.dropzoneAria")}
                           onClick={() => fileInputRef.current?.click()}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              fileInputRef.current?.click();
+                            }
+                          }}
                         >
-                          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center mb-4">
-                            <Upload className="w-10 h-10 text-purple-400" />
+                          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[var(--gradient-from)]/20 to-[var(--gradient-to)]/20 flex items-center justify-center mb-4">
+                            <Upload className="w-10 h-10 text-primary" />
                           </div>
-                          <p className="text-lg font-medium mb-2">Bild hierher ziehen oder klicken</p>
-                          <p className="text-sm text-muted-foreground">oder wählen Sie eine Datei aus</p>
+                          <p className="text-lg font-medium mb-2">{t("upload.dropzone")}</p>
+                          <p className="text-sm text-muted-foreground">{t("upload.dropzoneAlt")}</p>
                         </div>
                       )}
                       <input
@@ -200,12 +245,12 @@ export default function Home() {
                     {isGenerating && (
                       <div className="space-y-3">
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-purple-300 font-medium">{statusMessage || "Generiere Stencil..."}</span>
-                          <span className="text-purple-400">{progress}%</span>
+                          <span className="text-primary font-medium">{statusMessage || t("gen.generating")}</span>
+                          <span className="text-primary">{progress}%</span>
                         </div>
-                        <Progress value={progress} className="h-2 bg-purple-500/20" />
+                        <Progress value={progress} className="h-2 bg-primary/20" />
                         <p className="text-xs text-muted-foreground text-center">
-                          Dies kann 30-60 Sekunden dauern. Bitte warten...
+                          {t("gen.waitMessage")}
                         </p>
                       </div>
                     )}
@@ -213,17 +258,17 @@ export default function Home() {
                       <Button
                         onClick={handleGenerate}
                         disabled={isGenerating}
-                        className="flex-1 h-12 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-lg font-semibold disabled:opacity-70"
+                        className="flex-1 h-12 bg-gradient-to-r from-[var(--gradient-from)] to-[var(--gradient-to)] hover:opacity-90 text-lg font-semibold disabled:opacity-70"
                       >
                         {isGenerating ? (
                           <>
                             <Sparkles className="w-5 h-5 mr-2 animate-spin" />
-                            Bitte warten...
+                            {t("gen.pleaseWait")}
                           </>
                         ) : (
                           <>
                             <Wand2 className="w-5 h-5 mr-2" />
-                            Stencil generieren
+                            {t("common.generate")}
                           </>
                         )}
                       </Button>
@@ -232,7 +277,7 @@ export default function Home() {
                           <Button
                             onClick={downloadStencil}
                             variant="outline"
-                            className="h-12 px-6 border-purple-500/50 hover:bg-purple-500/10"
+                            className="h-12 px-6 border-primary/50 hover:bg-primary/10"
                           >
                             <Download className="w-5 h-5 mr-2" />
                             PNG
@@ -244,8 +289,8 @@ export default function Home() {
 
                     {currentResult && (
                       <div className="text-xs text-muted-foreground space-y-1 p-3 bg-zinc-800/50 rounded-lg">
-                        <p className="font-medium text-foreground">Pro-Tipp für Procreate:</p>
-                        <p>Klicke auf &quot;Procreate&quot; für eine PSD-Datei mit Ebenen, die du direkt in Procreate öffnen kannst.</p>
+                        <p className="font-medium text-foreground">{t("tip.procreateTitle")}</p>
+                        <p>{t("tip.procreateDesc")}</p>
                       </div>
                     )}
                   </div>
@@ -258,25 +303,25 @@ export default function Home() {
                 <SettingsPanel
                   transparentBg={transparentBg}
                   onTransparentBgChange={setTransparentBg}
+                  inverted={inverted}
+                  onInvertedChange={setInverted}
                   lineColor={lineColor}
                   onLineColorChange={setLineColor}
                   lineThickness={lineThickness}
                   onLineThicknessChange={setLineThickness}
+                  contrast={contrast}
+                  onContrastChange={setContrast}
                   showComparison={showComparison}
                   onShowComparisonChange={setShowComparison}
                   hasResult={!!currentResult}
                 />
-                <Card className="glass border-purple-500/20 bg-gradient-to-br from-purple-500/10 to-pink-500/10">
+                <Card className="glass border-primary/20 bg-gradient-to-br from-[var(--gradient-from)]/10 to-[var(--gradient-to)]/10">
                   <CardContent className="pt-6">
                     <div className="flex items-start gap-3">
-                      <Info className="w-5 h-5 text-purple-400 mt-0.5" />
+                      <Info className="w-5 h-5 text-primary mt-0.5" />
                       <div className="text-sm text-muted-foreground">
-                        <p className="font-medium text-foreground mb-1">Pro-Tipp</p>
-                        <p>
-                          Für beste Ergebnisse verwenden Sie Bilder mit klaren Kontrasten und
-                          gut definierten Kanten. Portraits und einfache Motive funktionieren
-                          am besten.
-                        </p>
+                        <p className="font-medium text-foreground mb-1">{t("common.proTip")}</p>
+                        <p>{t("tip.bestResults")}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -299,13 +344,13 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-purple-400" />
-              <span className="font-semibold">InkCraft AI</span>
-              <span className="text-muted-foreground">•</span>
-              <span className="text-sm text-muted-foreground">Professionelle Tattoo-Stencils in Sekunden</span>
+              <Sparkles className="w-5 h-5 text-primary" />
+              <span className="font-semibold">{t("brand.name")}</span>
+              <span className="text-muted-foreground">&bull;</span>
+              <span className="text-sm text-muted-foreground">{t("brand.tagline")}</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
-              <span>Made for Tattoo Artists</span>
+              <span>{t("footer.madeFor")}</span>
             </div>
           </div>
         </div>

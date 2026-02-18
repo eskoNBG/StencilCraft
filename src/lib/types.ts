@@ -6,6 +6,6 @@ export interface StencilResult {
   lineThickness: number;
   contrast: number;
   inverted: boolean;
-  createdAt: Date;
+  createdAt: Date | string;
   isFavorite: boolean;
 }

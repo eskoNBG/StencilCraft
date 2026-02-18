@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useLocale } from "@/hooks/useLocale";
 
 export default function Error({
   error,
@@ -9,6 +10,8 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { t } = useLocale();
+
   useEffect(() => {
     console.error("App error:", error);
   }, [error]);
@@ -34,15 +37,15 @@ export default function Error({
             <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
         </div>
-        <h2 className="text-2xl font-bold mb-2">Etwas ist schiefgelaufen</h2>
+        <h2 className="text-2xl font-bold mb-2">{t("error.title")}</h2>
         <p className="text-muted-foreground mb-6">
-          Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.
+          {t("error.description")}
         </p>
         <button
           onClick={reset}
-          className="px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold transition-all"
+          className="px-6 py-3 rounded-xl bg-gradient-to-r from-[var(--gradient-from)] to-[var(--gradient-to)] hover:opacity-90 text-white font-semibold transition-all"
         >
-          Erneut versuchen
+          {t("common.retry")}
         </button>
       </div>
     </div>

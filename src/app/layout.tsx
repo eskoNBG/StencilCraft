@@ -1,35 +1,34 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { LocaleProvider } from "@/hooks/useLocale";
+import { SessionProvider } from "next-auth/react";
+import { ThemeInitScript } from "@/components/ThemeInit";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "InkCraft AI - Professionelle Tattoo Stencil Generator",
-  description: "Verwandle jedes Foto in ein professionelles Tattoo-Stencil in Sekunden. Der schnellste AI Tattoo Stencil Maker für Künstler.",
-  keywords: ["Tattoo Stencil AI", "Tattoo Stencil Generator", "AI Tattoo", "Photo to Stencil", "Tattoo Design", "Tattoo Vorlagen"],
-  authors: [{ name: "InkCraft AI Team" }],
+  title: "StencilCraft - Professional Tattoo Stencil Generator",
+  description: "Turn any photo into a professional tattoo stencil in seconds. The fastest AI stencil maker for artists.",
+  keywords: ["Tattoo Stencil AI", "Tattoo Stencil Generator", "AI Tattoo", "Photo to Stencil", "Tattoo Design", "StencilCraft"],
+  authors: [{ name: "StencilCraft" }],
   icons: {
     icon: "/logo.svg",
   },
   openGraph: {
-    title: "InkCraft AI - Tattoo Stencil Generator",
-    description: "KI-gestützter Tattoo Stencil Generator. Verwandle jedes Foto in ein professionelles Tattoo-Stencil.",
+    title: "StencilCraft - Tattoo Stencil Generator",
+    description: "AI-powered tattoo stencil generator. Turn any photo into a professional stencil.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "InkCraft AI - Tattoo Stencil Generator",
-    description: "KI-gestützter Tattoo Stencil Generator für professionelle Tattoo-Künstler.",
+    title: "StencilCraft - Tattoo Stencil Generator",
+    description: "AI-powered tattoo stencil generator for professional tattoo artists.",
   },
 };
 
@@ -40,11 +39,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="de" suppressHydrationWarning className="dark">
+      <head>
+        <ThemeInitScript />
+      </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground min-h-screen`}
+        className={`${geistSans.variable} antialiased bg-background text-foreground min-h-screen`}
       >
-        {children}
-        <Toaster />
+        <SessionProvider>
+          <LocaleProvider>
+            {children}
+            <Toaster />
+          </LocaleProvider>
+        </SessionProvider>
       </body>
     </html>
   );
