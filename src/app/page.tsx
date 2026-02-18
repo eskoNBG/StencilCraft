@@ -13,6 +13,21 @@ import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Upload,
   Sparkles,
   Download,
@@ -36,54 +51,73 @@ import {
   Star,
   Users,
   Zap,
+  FileImage,
+  Layers,
+  FileDown,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
+import {
+  PAPER_SIZES,
+  createPsdWithLayers,
+  exportAsPng,
+  downloadFile,
+  generateFilename,
+  type PaperSizeKey,
+  type DPIOption,
+  type ExportOptions,
+} from "@/lib/psd-export";
 
-// Stencil styles
+// Stencil styles - Professional quality with AI enhancement
 const STENCIL_STYLES = [
   {
     id: "outline",
-    name: "Kontur",
-    description: "Klare, dünne Linien - perfekt für feine Tattoos",
+    name: "Outline",
+    description: "Klare Umrisse - perfekt für feine Tattoos",
     icon: "✏️",
-    color: "from-purple-500 to-pink-500",
+    thumbnail: "outline",
+    aiEnhanced: false,
   },
   {
     id: "simple",
-    name: "Minimalistisch",
+    name: "Simple",
     description: "Reduzierte Details - ideal für kleinere Tattoos",
-    icon: " ○ ",
-    color: "from-blue-500 to-cyan-500",
+    icon: "○",
+    thumbnail: "simple",
+    aiEnhanced: false,
   },
   {
     id: "detailed",
-    name: "Detailliert",
+    name: "Detailed",
     description: "Hoher Detailgrad - für realistische Motive",
     icon: "🎨",
-    color: "from-amber-500 to-orange-500",
+    thumbnail: "detailed",
+    aiEnhanced: false,
   },
   {
-    id: "dotwork",
-    name: "Dotwork",
-    description: "Punktierte Linien - traditioneller Stil",
-    icon: "◉",
-    color: "from-green-500 to-teal-500",
+    id: "hatching",
+    name: "Hatching",
+    description: "AI-verstärkte professionelle Schraffur",
+    icon: "▤",
+    thumbnail: "hatching",
+    aiEnhanced: true,
   },
   {
-    id: "geometric",
-    name: "Geometrisch",
-    description: "Geometrische Muster - moderner Look",
-    icon: "◇",
-    color: "from-rose-500 to-red-500",
+    id: "solid",
+    name: "Solid",
+    description: "AI-verstärkte flächige Schattierungen",
+    icon: "▣",
+    thumbnail: "solid",
+    aiEnhanced: true,
   },
-  {
-    id: "traditional",
-    name: "Traditional",
-    description: "Klassischer Old School Stil",
-    icon: "⚓",
-    color: "from-indigo-500 to-violet-500",
-  },
+];
+
+// Preset line colors - Simple selection like TattoostencilPro
+const LINE_COLORS = [
+  { value: "#000000", name: "Schwarz" },
+  { value: "#dc2626", name: "Rot" },
+  { value: "#2563eb", name: "Blau" },
+  { value: "#16a34a", name: "Grün" },
 ];
 
 // Body placement options
@@ -112,7 +146,7 @@ export default function Home() {
   const { toast } = useToast();
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [selectedStyle, setSelectedStyle] = useState("outline");
-  const [lineThickness, setLineThickness] = useState(2);
+  const [lineThickness, setLineThickness] = useState(3);
   const [contrast, setContrast] = useState(50);
   const [inverted, setInverted] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -124,22 +158,61 @@ export default function Home() {
   const [flipH, setFlipH] = useState(false);
   const [flipV, setFlipV] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // New state for color and background
+  const [lineColor, setLineColor] = useState("#000000");
+  const [transparentBg, setTransparentBg] = useState(false);
+  const [showComparison, setShowComparison] = useState(true);
+  const [comparisonPosition, setComparisonPosition] = useState(50); // 0-100, position of slider
+  const [originalOpacity, setOriginalOpacity] = useState(100); // Opacity of original image in comparison
+
+  // Export dialog state
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [exportPaperSize, setExportPaperSize] = useState<PaperSizeKey>("original");
+  const [exportDpi, setExportDpi] = useState<DPIOption>(300);
+  const [exportFormat, setExportFormat] = useState<"png" | "psd">("png");
+  const [exportIncludeOriginal, setExportIncludeOriginal] = useState(true);
+  const [exportIncludeStencil, setExportIncludeStencil] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Maximum gallery items to prevent localStorage quota issues
+  const MAX_GALLERY_ITEMS = 10;
 
   // Load gallery from localStorage
   useEffect(() => {
-    const savedGallery = localStorage.getItem("inkcraft_gallery");
-    if (savedGallery) {
-      try {
-        setGallery(JSON.parse(savedGallery));
-      } catch (e) {
-        console.error("Failed to load gallery:", e);
+    try {
+      const savedGallery = localStorage.getItem("inkcraft_gallery");
+      if (savedGallery) {
+        const parsed = JSON.parse(savedGallery);
+        // Limit to max items on load
+        setGallery(parsed.slice(0, MAX_GALLERY_ITEMS));
       }
+    } catch (e) {
+      console.error("Failed to load gallery:", e);
+      // Clear corrupted data
+      localStorage.removeItem("inkcraft_gallery");
     }
   }, []);
 
-  // Save gallery to localStorage
+  // Save gallery to localStorage with error handling
   useEffect(() => {
-    localStorage.setItem("inkcraft_gallery", JSON.stringify(gallery));
+    try {
+      // Limit gallery size before saving
+      const limitedGallery = gallery.slice(0, MAX_GALLERY_ITEMS);
+      localStorage.setItem("inkcraft_gallery", JSON.stringify(limitedGallery));
+    } catch (e) {
+      // If quota exceeded, remove oldest items
+      console.warn("localStorage quota exceeded, clearing old items");
+      try {
+        // Keep only 5 most recent items
+        const reducedGallery = gallery.slice(0, 5);
+        localStorage.setItem("inkcraft_gallery", JSON.stringify(reducedGallery));
+        setGallery(reducedGallery);
+      } catch (e2) {
+        // If still failing, clear gallery
+        localStorage.removeItem("inkcraft_gallery");
+      }
+    }
   }, [gallery]);
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -227,15 +300,18 @@ export default function Home() {
     }, 4000);
 
     try {
-      // Step 1: Start the generation job
+      // Step 1: Start the generation job with the uploaded image
       const startResponse = await fetch("/api/generate-stencil", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          image: uploadedImage,  // Pass the uploaded image!
           style: selectedStyle,
           lineThickness,
           contrast,
           inverted,
+          lineColor,
+          transparentBg,
         }),
       });
 
@@ -266,7 +342,7 @@ export default function Home() {
 
           const result: StencilResult = {
             id: Date.now().toString(),
-            originalImage: uploadedImage,
+            originalImage: "", // Don't store original to save space
             stencilImage: checkData.result,
             style: selectedStyle,
             lineThickness,
@@ -277,7 +353,8 @@ export default function Home() {
           };
 
           setCurrentResult(result);
-          setGallery((prev) => [result, ...prev]);
+          // Add to gallery and limit to max items
+          setGallery((prev) => [result, ...prev].slice(0, MAX_GALLERY_ITEMS));
 
           toast({
             title: "Stencil erstellt!",
@@ -332,6 +409,54 @@ export default function Home() {
       title: "Download gestartet",
       description: "Das Stencil wird heruntergeladen",
     });
+  };
+
+  // Advanced export function for Procreate and high-res
+  const handleAdvancedExport = async () => {
+    if (!currentResult || !uploadedImage) return;
+
+    setIsExporting(true);
+    try {
+      const options: ExportOptions = {
+        paperSize: exportPaperSize,
+        dpi: exportDpi,
+        format: exportFormat,
+        includeOriginal: exportIncludeOriginal,
+        includeStencil: exportIncludeStencil,
+      };
+
+      if (exportFormat === "psd") {
+        // Create PSD with layers
+        const psdBuffer = await createPsdWithLayers(uploadedImage, currentResult.stencilImage, options);
+        const blob = new Blob([psdBuffer], { type: "image/vnd.adobe.photoshop" });
+        downloadFile(blob, generateFilename("psd", currentResult.style));
+        
+        toast({
+          title: "PSD exportiert!",
+          description: "Die Datei kann direkt in Procreate geöffnet werden",
+        });
+      } else {
+        // Export as PNG
+        const blob = await exportAsPng(currentResult.stencilImage, options);
+        downloadFile(blob, generateFilename("png", currentResult.style));
+        
+        toast({
+          title: "PNG exportiert!",
+          description: `${PAPER_SIZES[exportPaperSize].name} @ ${exportDpi} DPI`,
+        });
+      }
+
+      setShowExportDialog(false);
+    } catch (error) {
+      console.error("Export error:", error);
+      toast({
+        title: "Export fehlgeschlagen",
+        description: "Bitte versuchen Sie es erneut",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const toggleFavorite = (id: string) => {
@@ -426,11 +551,11 @@ export default function Home() {
               </p>
               <div className="flex justify-center gap-8 mt-8">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-400">6</div>
+                  <div className="text-2xl font-bold text-purple-400">5</div>
                   <div className="text-sm text-muted-foreground">Stile</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-400">30s</div>
+                  <div className="text-2xl font-bold text-purple-400">&lt;5s</div>
                   <div className="text-sm text-muted-foreground">Ø Zeit</div>
                 </div>
                 <div className="text-center">
@@ -466,19 +591,104 @@ export default function Home() {
                       {uploadedImage ? (
                         <div className="p-4">
                           <div className="relative aspect-square max-h-[500px] mx-auto overflow-hidden rounded-lg bg-black/20">
-                            <img
-                              src={currentResult?.stencilImage || uploadedImage}
-                              alt="Preview"
-                              className="w-full h-full object-contain"
-                              style={{ transform: getImageTransform() }}
-                            />
-                            {currentResult && (
+                            {/* Comparison Slider View */}
+                            {currentResult && showComparison ? (
+                              <div className="relative w-full h-full">
+                                {/* Before Image (Original) with opacity control */}
+                                <img
+                                  src={uploadedImage}
+                                  alt="Original"
+                                  className="absolute inset-0 w-full h-full object-contain"
+                                  style={{ 
+                                    transform: getImageTransform(),
+                                    opacity: originalOpacity / 100 
+                                  }}
+                                />
+                                
+                                {/* After Image (Stencil) with clip */}
+                                <div 
+                                  className="absolute inset-0 overflow-hidden"
+                                  style={{ clipPath: `inset(0 ${100 - comparisonPosition}% 0 0)` }}
+                                >
+                                  <img
+                                    src={currentResult.stencilImage}
+                                    alt="Stencil"
+                                    className="w-full h-full object-contain"
+                                    style={{ transform: getImageTransform() }}
+                                  />
+                                </div>
+                                
+                                {/* Slider */}
+                                <div 
+                                  className="absolute top-0 bottom-0 w-1 bg-white cursor-ew-resize z-10"
+                                  style={{ left: `${comparisonPosition}%` }}
+                                >
+                                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg">
+                                    <div className="flex gap-1">
+                                      <div className="w-1 h-4 bg-gray-400 rounded" />
+                                      <div className="w-1 h-4 bg-gray-400 rounded" />
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* Slider track for interaction */}
+                                <input
+                                  type="range"
+                                  min="0"
+                                  max="100"
+                                  value={comparisonPosition}
+                                  onChange={(e) => setComparisonPosition(Number(e.target.value))}
+                                  className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize z-20"
+                                />
+                                
+                                {/* Labels */}
+                                <Badge className="absolute top-2 left-2 bg-purple-500/80">
+                                  Original
+                                </Badge>
+                                <Badge className="absolute top-2 right-2 bg-green-500/80">
+                                  <Check className="w-3 h-3 mr-1" />
+                                  Stencil
+                                </Badge>
+                              </div>
+                            ) : (
+                              /* Normal single image view */
+                              <img
+                                src={currentResult?.stencilImage || uploadedImage}
+                                alt="Preview"
+                                className="w-full h-full object-contain"
+                                style={{ transform: getImageTransform() }}
+                              />
+                            )}
+                            
+                            {currentResult && !showComparison && (
                               <Badge className="absolute top-2 right-2 bg-green-500/80">
                                 <Check className="w-3 h-3 mr-1" />
                                 Stencil
                               </Badge>
                             )}
                           </div>
+                          
+                          {/* Original Opacity Slider - Like TattoostencilPro */}
+                          {currentResult && showComparison && (
+                            <div className="flex items-center gap-3 mt-4 px-2">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-muted-foreground flex-shrink-0">
+                                <path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"></path>
+                                <path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"></path>
+                                <path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"></path>
+                              </svg>
+                              <span className="text-xs text-muted-foreground min-w-[80px]">Original Deckkraft</span>
+                              <Slider
+                                min={0}
+                                max={100}
+                                step={10}
+                                value={[originalOpacity]}
+                                onValueChange={(value) => setOriginalOpacity(value[0])}
+                                className="flex-1"
+                              />
+                              <span className="text-xs text-muted-foreground min-w-[3rem] text-right font-mono">{originalOpacity}%</span>
+                            </div>
+                          )}
+                          
                           {/* Image Controls */}
                           <div className="flex items-center justify-center gap-2 mt-4">
                             <Button
@@ -590,16 +800,165 @@ export default function Home() {
                         )}
                       </Button>
                       {currentResult && (
-                        <Button
-                          onClick={downloadStencil}
-                          variant="outline"
-                          className="h-12 px-8 border-purple-500/50 hover:bg-purple-500/10"
-                        >
-                          <Download className="w-5 h-5 mr-2" />
-                          Download
-                        </Button>
+                        <>
+                          {/* Quick Download Button */}
+                          <Button
+                            onClick={downloadStencil}
+                            variant="outline"
+                            className="h-12 px-6 border-purple-500/50 hover:bg-purple-500/10"
+                          >
+                            <Download className="w-5 h-5 mr-2" />
+                            PNG
+                          </Button>
+                          {/* Advanced Export Dialog */}
+                          <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="h-12 px-6 border-pink-500/50 hover:bg-pink-500/10 bg-gradient-to-r from-pink-500/10 to-purple-500/10"
+                              >
+                                <Layers className="w-5 h-5 mr-2" />
+                                Procreate
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-md bg-zinc-900 border-purple-500/30">
+                              <DialogHeader>
+                                <DialogTitle className="flex items-center gap-2 text-xl">
+                                  <Layers className="w-5 h-5 text-purple-400" />
+                                  Export für Procreate
+                                </DialogTitle>
+                                <DialogDescription>
+                                  PSD-Datei mit Ebenen für nahtlose Procreate-Integration
+                                </DialogDescription>
+                              </DialogHeader>
+                              
+                              <div className="space-y-5 py-4">
+                                {/* Format Selection */}
+                                <div className="space-y-3">
+                                  <Label className="text-sm font-medium">Format</Label>
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <button
+                                      onClick={() => setExportFormat("png")}
+                                      className={`p-4 rounded-xl border-2 transition-all ${
+                                        exportFormat === "png"
+                                          ? "border-purple-500 bg-purple-500/20"
+                                          : "border-zinc-700 hover:border-purple-500/50"
+                                      }`}
+                                    >
+                                      <FileImage className="w-6 h-6 mx-auto mb-2 text-purple-400" />
+                                      <div className="font-medium">PNG</div>
+                                      <div className="text-xs text-muted-foreground">Einzeldatei</div>
+                                    </button>
+                                    <button
+                                      onClick={() => setExportFormat("psd")}
+                                      className={`p-4 rounded-xl border-2 transition-all ${
+                                        exportFormat === "psd"
+                                          ? "border-pink-500 bg-pink-500/20"
+                                          : "border-zinc-700 hover:border-pink-500/50"
+                                      }`}
+                                    >
+                                      <Layers className="w-6 h-6 mx-auto mb-2 text-pink-400" />
+                                      <div className="font-medium">PSD</div>
+                                      <div className="text-xs text-muted-foreground">Mit Ebenen</div>
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Paper Size */}
+                                <div className="space-y-3">
+                                  <Label className="text-sm font-medium">Papierformat</Label>
+                                  <Select value={exportPaperSize} onValueChange={(v) => setExportPaperSize(v as PaperSizeKey)}>
+                                    <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-zinc-800 border-zinc-700">
+                                      {Object.entries(PAPER_SIZES).map(([key, size]) => (
+                                        <SelectItem key={key} value={key}>
+                                          {size.name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+
+                                {/* DPI Selection */}
+                                <div className="space-y-3">
+                                  <Label className="text-sm font-medium">Auflösung (DPI)</Label>
+                                  <div className="grid grid-cols-3 gap-3">
+                                    {([72, 150, 300] as DPIOption[]).map((dpi) => (
+                                      <button
+                                        key={dpi}
+                                        onClick={() => setExportDpi(dpi)}
+                                        className={`p-3 rounded-xl border-2 transition-all ${
+                                          exportDpi === dpi
+                                            ? "border-purple-500 bg-purple-500/20"
+                                            : "border-zinc-700 hover:border-purple-500/50"
+                                        }`}
+                                      >
+                                        <div className="font-bold">{dpi}</div>
+                                        <div className="text-xs text-muted-foreground">
+                                          {dpi === 72 ? "Web" : dpi === 150 ? "Mittel" : "Print"}
+                                        </div>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* Layer Options (PSD only) */}
+                                {exportFormat === "psd" && (
+                                  <div className="space-y-3 p-4 bg-zinc-800/50 rounded-xl">
+                                    <Label className="text-sm font-medium">Ebenen</Label>
+                                    <div className="space-y-3">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-sm">Stencil-Ebene</span>
+                                        <Switch
+                                          checked={exportIncludeStencil}
+                                          onCheckedChange={setExportIncludeStencil}
+                                        />
+                                      </div>
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-sm">Original-Ebene (Referenz)</span>
+                                        <Switch
+                                          checked={exportIncludeOriginal}
+                                          onCheckedChange={setExportIncludeOriginal}
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Export Button */}
+                                <Button
+                                  onClick={handleAdvancedExport}
+                                  disabled={isExporting || (exportFormat === "psd" && !exportIncludeStencil && !exportIncludeOriginal)}
+                                  className="w-full h-12 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                                >
+                                  {isExporting ? (
+                                    <>
+                                      <Sparkles className="w-5 h-5 mr-2 animate-spin" />
+                                      Wird exportiert...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <FileDown className="w-5 h-5 mr-2" />
+                                      {exportFormat === "psd" ? "PSD exportieren" : "PNG exportieren"}
+                                    </>
+                                  )}
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </>
                       )}
                     </div>
+                    
+                    {/* Procreate Tip - Like TattoostencilPro */}
+                    {currentResult && (
+                      <div className="text-xs text-muted-foreground space-y-1 p-3 bg-zinc-800/50 rounded-lg">
+                        <p className="font-medium text-foreground">💡 Pro-Tipp für Procreate:</p>
+                        <p>Klicke auf "Procreate" für eine PSD-Datei mit Ebenen, die du direkt in Procreate öffnen kannst.</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -642,7 +1001,7 @@ export default function Home() {
                   </CardContent>
                 </Card>
 
-                {/* Advanced Settings */}
+                {/* Advanced Settings - Simplified like TattoostencilPro */}
                 <Card className="glass border-purple-500/20">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -650,47 +1009,79 @@ export default function Home() {
                       Einstellungen
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="lineThickness">Linienstärke</Label>
-                        <span className="text-sm text-muted-foreground">{lineThickness}px</span>
+                  <CardContent className="space-y-4">
+                    {/* Transparent Background Toggle - Like TattoostencilPro */}
+                    <div className="flex items-center justify-between p-4 bg-zinc-800/50 rounded-xl">
+                      <div>
+                        <div className="font-medium">Transparenter Hintergrund</div>
+                        <div className="text-sm text-muted-foreground">Nur Linien - für einfaches Transferieren</div>
                       </div>
-                      <Slider
-                        id="lineThickness"
-                        min={1}
-                        max={5}
-                        step={0.5}
-                        value={[lineThickness]}
-                        onValueChange={(value) => setLineThickness(value[0])}
-                        className="data-[slot=slider-track]:bg-purple-500/20 data-[slot=slider-range]:bg-purple-500"
-                      />
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="contrast">Kontrast</Label>
-                        <span className="text-sm text-muted-foreground">{contrast}%</span>
-                      </div>
-                      <Slider
-                        id="contrast"
-                        min={0}
-                        max={100}
-                        step={5}
-                        value={[contrast]}
-                        onValueChange={(value) => setContrast(value[0])}
-                        className="data-[slot=slider-track]:bg-purple-500/20 data-[slot=slider-range]:bg-purple-500"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="inverted">Invertiert</Label>
                       <Switch
-                        id="inverted"
-                        checked={inverted}
-                        onCheckedChange={setInverted}
+                        id="transparentBg"
+                        checked={transparentBg}
+                        onCheckedChange={setTransparentBg}
                       />
                     </div>
+                    
+                    {/* Line Color - Simple 4 color selection like TattoostencilPro */}
+                    <div className="p-4 bg-zinc-800/50 rounded-xl">
+                      <div className="mb-3">
+                        <span className="font-medium">Linienfarbe</span>
+                        <div className="text-sm text-muted-foreground">Wähle die Farbe der Linien</div>
+                      </div>
+                      <div className="grid grid-cols-4 gap-2">
+                        {LINE_COLORS.map((color) => (
+                          <button
+                            key={color.value}
+                            onClick={() => setLineColor(color.value)}
+                            className={`p-3 rounded-lg flex items-center justify-center transition-all ${
+                              lineColor === color.value 
+                                ? "bg-zinc-700 border-2 border-white" 
+                                : "bg-zinc-900 border-2 border-zinc-700 hover:bg-zinc-800"
+                            }`}
+                            title={color.name}
+                          >
+                            <div 
+                              className="w-8 h-8 rounded-full border-2 border-gray-400"
+                              style={{ backgroundColor: color.value }}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Line Thickness Slider */}
+                    <div className="p-4 bg-zinc-800/50 rounded-xl">
+                      <div className="mb-3">
+                        <span className="font-medium">Linienstärke</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Slider
+                          id="lineThickness"
+                          min={1}
+                          max={5}
+                          step={1}
+                          value={[lineThickness]}
+                          onValueChange={(value) => setLineThickness(value[0])}
+                          className="flex-1"
+                        />
+                        <span className="text-sm font-mono bg-zinc-700/50 rounded-md px-3 py-1 min-w-[3rem] text-center">{lineThickness}px</span>
+                      </div>
+                    </div>
+                    
+                    {/* Comparison Toggle */}
+                    {currentResult && (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label>Vergleichsansicht</Label>
+                          <p className="text-xs text-muted-foreground">Vorher/Nachher Slider</p>
+                        </div>
+                        <Switch
+                          checked={showComparison}
+                          onCheckedChange={setShowComparison}
+                        />
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 

@@ -1,0 +1,4 @@
+2 | """
+      ^
+error: Unterminated string literal
+    at /home/z/my-project/stencil-processor/index.py:2:3
