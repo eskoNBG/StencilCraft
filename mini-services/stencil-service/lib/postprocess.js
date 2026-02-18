@@ -3,46 +3,47 @@ const { hexToRgb } = require("./utils");
 
 /**
  * Post-process a binary edge buffer into a final PNG base64 data URL.
- *
- * @param {Buffer} edgeBuf - Binary single-channel buffer (255 = edge, 0 = bg)
- * @param {number} width
- * @param {number} height
- * @param {object} options
- * @param {boolean} options.inverted
- * @param {string} options.lineColor
- * @param {boolean} options.transparentBg
- * @returns {Promise<string>} "data:image/png;base64,..."
+ * Includes anti-aliasing for smooth lines.
  */
 async function postprocess(edgeBuf, width, height, options) {
   const { inverted, lineColor, transparentBg } = options;
   const { r, g, b } = hexToRgb(lineColor);
 
-  // Build RGBA output directly from the binary edge buffer
+  // Anti-alias: apply a slight blur to the binary edges, then use the
+  // resulting gradient as an alpha channel for smooth, non-jagged lines.
+  const aaBuffer = await sharp(edgeBuf, { raw: { width, height, channels: 1 } })
+    .blur(0.6)
+    .grayscale()
+    .raw()
+    .toBuffer();
+
   const pixelCount = width * height;
   const rgba = Buffer.alloc(pixelCount * 4);
 
   for (let i = 0; i < pixelCount; i++) {
-    const isLine = inverted ? (edgeBuf[i] === 0) : (edgeBuf[i] === 255);
+    // aaBuffer values: 0 = no edge, 255 = full edge, intermediate = anti-aliased
+    let edgeAlpha = aaBuffer[i];
+    if (inverted) edgeAlpha = 255 - edgeAlpha;
+
     const offset = i * 4;
 
-    if (isLine) {
+    if (transparentBg) {
+      // Lines are colored with alpha from edge strength
       rgba[offset] = r;
       rgba[offset + 1] = g;
       rgba[offset + 2] = b;
-      rgba[offset + 3] = 255;
-    } else if (transparentBg) {
-      // All zeros = fully transparent (already initialized)
+      rgba[offset + 3] = edgeAlpha;
     } else {
-      // Background color: white for normal, dark for inverted
-      const bg = inverted ? 30 : 255;
-      rgba[offset] = bg;
-      rgba[offset + 1] = bg;
-      rgba[offset + 2] = bg;
+      // Blend line color over background
+      const bgVal = inverted ? 30 : 255;
+      const t = edgeAlpha / 255;
+      rgba[offset] = Math.round(r * t + bgVal * (1 - t));
+      rgba[offset + 1] = Math.round(g * t + bgVal * (1 - t));
+      rgba[offset + 2] = Math.round(b * t + bgVal * (1 - t));
       rgba[offset + 3] = 255;
     }
   }
 
-  // Encode to PNG
   const pngBuffer = await sharp(rgba, { raw: { width, height, channels: 4 } })
     .png()
     .toBuffer();

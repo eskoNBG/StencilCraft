@@ -1,100 +1,126 @@
 const sharp = require("sharp");
 
-/**
- * Helper: create a sharp instance from a single-channel raw buffer.
- */
-function fromRaw(buf, width, height) {
-  return sharp(buf, { raw: { width, height, channels: 1 } });
-}
+// ─── Sobel gradient computation ───────────────────────────────────────────────
 
 /**
- * Helper: extract single-channel raw buffer, ensuring we stay in grayscale.
- * Sharp may internally convert to sRGB, so we force grayscale + raw on output.
+ * Compute Sobel gradient magnitude and direction for every pixel.
  */
-async function toRaw(pipeline) {
-  return pipeline.grayscale().raw().toBuffer();
-}
+function sobelGradient(grayBuf, width, height) {
+  const size = width * height;
+  const magnitude = new Float32Array(size);
+  const direction = new Float32Array(size);
 
-/**
- * Sobel edge detection.
- *
- * Instead of using convolve with offset tricks, we use a simpler approach:
- * Apply Sobel via convolve with proper normalization, then threshold.
- *
- * Sharp's convolve formula: output = clamp((sum of kernel*pixel) / scale + offset, 0, 255)
- * For Sobel, we want the absolute gradient magnitude.
- *
- * Approach: Run two passes (horizontal and vertical edge emphasis via blur differences),
- * then combine in raw buffer math.
- */
-async function sobelEdges(grayBuf, width, height, lowThreshold = 30, highThreshold = 90) {
-  // Use difference-of-gaussians approach for more reliable edge detection
-  // than trying to use convolve with signed kernels.
-
-  // Slightly blurred version (preserves edges)
-  const blurSmall = await toRaw(fromRaw(grayBuf, width, height).blur(1.0));
-  // More blurred version (smooths edges)
-  const blurLarge = await toRaw(fromRaw(grayBuf, width, height).blur(2.0));
-
-  // Difference of Gaussians gives edge-like response
-  const dog = Buffer.alloc(width * height);
-  for (let i = 0; i < width * height; i++) {
-    dog[i] = Math.abs(blurSmall[i] - blurLarge[i]);
-  }
-
-  // Also compute simple gradient via pixel differences (Sobel-like)
-  const gradMag = Buffer.alloc(width * height);
   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {
       const idx = y * width + x;
-      // Sobel X approximation
       const gx =
         -grayBuf[(y - 1) * width + (x - 1)] - 2 * grayBuf[y * width + (x - 1)] - grayBuf[(y + 1) * width + (x - 1)]
         + grayBuf[(y - 1) * width + (x + 1)] + 2 * grayBuf[y * width + (x + 1)] + grayBuf[(y + 1) * width + (x + 1)];
-      // Sobel Y approximation
       const gy =
         -grayBuf[(y - 1) * width + (x - 1)] - 2 * grayBuf[(y - 1) * width + x] - grayBuf[(y - 1) * width + (x + 1)]
         + grayBuf[(y + 1) * width + (x - 1)] + 2 * grayBuf[(y + 1) * width + x] + grayBuf[(y + 1) * width + (x + 1)];
 
-      const mag = Math.min(255, Math.sqrt(gx * gx + gy * gy) / 4);
-      gradMag[idx] = Math.round(mag);
+      magnitude[idx] = Math.sqrt(gx * gx + gy * gy);
+      direction[idx] = Math.atan2(gy, gx);
     }
   }
 
-  // Combine DoG and gradient magnitude
-  const combined = Buffer.alloc(width * height);
-  for (let i = 0; i < width * height; i++) {
-    combined[i] = Math.min(255, gradMag[i] + dog[i] * 2);
-  }
+  return { magnitude, direction };
+}
 
-  // Apply double-threshold (hysteresis)
-  const strong = Buffer.alloc(width * height);
-  const weak = Buffer.alloc(width * height);
+// ─── Non-maximum suppression ──────────────────────────────────────────────────
 
-  for (let i = 0; i < width * height; i++) {
-    if (combined[i] >= highThreshold) {
-      strong[i] = 255;
-    } else if (combined[i] >= lowThreshold) {
-      weak[i] = 255;
+/**
+ * Thin edges to 1px width by suppressing non-maximum gradient values.
+ */
+function nonMaxSuppression(magnitude, direction, width, height) {
+  const suppressed = new Float32Array(width * height);
+
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const idx = y * width + x;
+      const mag = magnitude[idx];
+      if (mag === 0) continue;
+
+      let angle = direction[idx] * (180 / Math.PI);
+      if (angle < 0) angle += 180;
+
+      let n1, n2;
+      if ((angle >= 0 && angle < 22.5) || (angle >= 157.5 && angle <= 180)) {
+        n1 = magnitude[y * width + (x - 1)];
+        n2 = magnitude[y * width + (x + 1)];
+      } else if (angle >= 22.5 && angle < 67.5) {
+        n1 = magnitude[(y - 1) * width + (x + 1)];
+        n2 = magnitude[(y + 1) * width + (x - 1)];
+      } else if (angle >= 67.5 && angle < 112.5) {
+        n1 = magnitude[(y - 1) * width + x];
+        n2 = magnitude[(y + 1) * width + x];
+      } else {
+        n1 = magnitude[(y - 1) * width + (x - 1)];
+        n2 = magnitude[(y + 1) * width + (x + 1)];
+      }
+
+      suppressed[idx] = (mag >= n1 && mag >= n2) ? mag : 0;
     }
   }
 
-  // Promote weak edges adjacent to strong edges (2 passes for connectivity)
-  const result = Buffer.from(strong);
-  for (let pass = 0; pass < 2; pass++) {
+  return suppressed;
+}
+
+// ─── Canny-like edge detection ────────────────────────────────────────────────
+
+/**
+ * Full Canny-like edge detection:
+ * 1. Sobel gradient
+ * 2. Non-maximum suppression (1px thin edges)
+ * 3. Double threshold with global percentile-based values
+ * 4. Hysteresis
+ *
+ * @param {Buffer} grayBuf
+ * @param {number} width
+ * @param {number} height
+ * @param {number} lowThreshold - Absolute low threshold for weak edges
+ * @param {number} highThreshold - Absolute high threshold for strong edges
+ * @param {boolean} useNMS - Whether to apply non-maximum suppression
+ */
+async function cannyEdges(grayBuf, width, height, lowThreshold = 20, highThreshold = 50, useNMS = true) {
+  const { magnitude, direction } = sobelGradient(grayBuf, width, height);
+
+  // Optional NMS for thinner lines
+  const edgeMag = useNMS
+    ? nonMaxSuppression(magnitude, direction, width, height)
+    : magnitude;
+
+  const size = width * height;
+
+  // Double-threshold
+  const edges = Buffer.alloc(size);
+  for (let i = 0; i < size; i++) {
+    if (edgeMag[i] >= highThreshold) {
+      edges[i] = 255; // Strong
+    } else if (edgeMag[i] >= lowThreshold) {
+      edges[i] = 128; // Weak
+    }
+  }
+
+  // Hysteresis: promote weak edges connected to strong edges (3 passes)
+  const result = Buffer.alloc(size);
+  for (let i = 0; i < size; i++) {
+    if (edges[i] === 255) result[i] = 255;
+  }
+
+  for (let pass = 0; pass < 3; pass++) {
     for (let y = 1; y < height - 1; y++) {
       for (let x = 1; x < width - 1; x++) {
         const idx = y * width + x;
-        if (weak[idx] && !result[idx]) {
-          // Check 8-neighbors
-          for (let dy = -1; dy <= 1; dy++) {
-            for (let dx = -1; dx <= 1; dx++) {
-              if (result[(y + dy) * width + (x + dx)]) {
-                result[idx] = 255;
-                break;
-              }
+        if (edges[idx] !== 128 || result[idx]) continue;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (result[(y + dy) * width + (x + dx)] === 255) {
+              result[idx] = 255;
+              dy = 2; // break outer
+              break;
             }
-            if (result[idx]) break;
           }
         }
       }
@@ -105,11 +131,22 @@ async function sobelEdges(grayBuf, width, height, lowThreshold = 30, highThresho
 }
 
 /**
- * Laplacian edge detection via raw buffer math.
+ * Simple gradient-magnitude edge detection (no NMS, for posterization).
+ */
+function simpleEdges(grayBuf, width, height, threshold = 30) {
+  const { magnitude } = sobelGradient(grayBuf, width, height);
+  const edges = Buffer.alloc(width * height);
+  for (let i = 0; i < width * height; i++) {
+    edges[i] = magnitude[i] >= threshold ? 255 : 0;
+  }
+  return edges;
+}
+
+/**
+ * Laplacian edge detection for fine detail.
  */
 function laplacianEdges(grayBuf, width, height, threshold = 30) {
   const edges = Buffer.alloc(width * height);
-
   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {
       const idx = y * width + x;
@@ -119,17 +156,14 @@ function laplacianEdges(grayBuf, width, height, threshold = 30) {
         + 4 * grayBuf[idx]
         - grayBuf[y * width + (x + 1)]
         - grayBuf[(y + 1) * width + x];
-
       edges[idx] = Math.abs(lap) >= threshold ? 255 : 0;
     }
   }
-
   return edges;
 }
 
-/**
- * OR two binary edge buffers together.
- */
+// ─── Utility operations ───────────────────────────────────────────────────────
+
 function mergeEdges(a, b) {
   const result = Buffer.alloc(a.length);
   for (let i = 0; i < a.length; i++) {
@@ -138,57 +172,49 @@ function mergeEdges(a, b) {
   return result;
 }
 
-/**
- * Morphological dilation on a binary buffer (pure JS, no sharp convolve issues).
- */
 function dilate(buf, width, height, radius) {
   if (radius <= 0) return buf;
   const result = Buffer.alloc(width * height);
-
   for (let y = 0; y < height; y++) {
+    const yMin = Math.max(0, y - radius), yMax = Math.min(height - 1, y + radius);
     for (let x = 0; x < width; x++) {
+      const xMin = Math.max(0, x - radius), xMax = Math.min(width - 1, x + radius);
       let found = false;
-      for (let dy = -radius; dy <= radius && !found; dy++) {
-        for (let dx = -radius; dx <= radius && !found; dx++) {
-          const ny = y + dy, nx = x + dx;
-          if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
-            if (buf[ny * width + nx]) found = true;
-          }
+      for (let ny = yMin; ny <= yMax && !found; ny++) {
+        for (let nx = xMin; nx <= xMax && !found; nx++) {
+          if (buf[ny * width + nx]) found = true;
         }
       }
       if (found) result[y * width + x] = 255;
     }
   }
-
   return result;
 }
 
-/**
- * Clean small noise from a binary edge buffer using morphological erosion then dilation.
- */
-function cleanEdges(buf, width, height, size = 1) {
-  // Erode: only keep pixels where ALL neighbors within `size` are also set
-  const eroded = Buffer.alloc(width * height);
+function erode(buf, width, height, radius) {
+  if (radius <= 0) return buf;
+  const result = Buffer.alloc(width * height);
   for (let y = 0; y < height; y++) {
+    const yMin = Math.max(0, y - radius), yMax = Math.min(height - 1, y + radius);
     for (let x = 0; x < width; x++) {
-      if (!buf[y * width + x]) continue;
+      const xMin = Math.max(0, x - radius), xMax = Math.min(width - 1, x + radius);
       let allSet = true;
-      for (let dy = -size; dy <= size && allSet; dy++) {
-        for (let dx = -size; dx <= size && allSet; dx++) {
-          const ny = y + dy, nx = x + dx;
-          if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
-            if (!buf[ny * width + nx]) allSet = false;
-          } else {
-            allSet = false;
-          }
+      for (let ny = yMin; ny <= yMax && allSet; ny++) {
+        for (let nx = xMin; nx <= xMax && allSet; nx++) {
+          if (!buf[ny * width + nx]) allSet = false;
         }
       }
-      if (allSet) eroded[y * width + x] = 255;
+      if (allSet) result[y * width + x] = 255;
     }
   }
-
-  // Dilate back to restore edge thickness
-  return dilate(eroded, width, height, size);
+  return result;
 }
 
-module.exports = { sobelEdges, laplacianEdges, mergeEdges, dilate, cleanEdges };
+function morphOpen(buf, width, height, radius = 1) {
+  return dilate(erode(buf, width, height, radius), width, height, radius);
+}
+
+module.exports = {
+  sobelGradient, cannyEdges, simpleEdges, laplacianEdges,
+  mergeEdges, dilate, erode, morphOpen,
+};
