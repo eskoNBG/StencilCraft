@@ -1,0 +1,7 @@
+{
+  "name": "stencil-processor",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "source venv/bin/activate && python3 index.py"
+  }
+}
