@@ -136,7 +136,7 @@ export async function createPsdWithLayers(
       name: 'Stencil',
       canvas: stencilCanvas,
       opacity: 255,
-      visible: true,
+      hidden: false,
       blendMode: 'normal',
     });
   }
@@ -147,7 +147,7 @@ export async function createPsdWithLayers(
       name: 'Original',
       canvas: originalCanvas,
       opacity: Math.round(0.5 * 255), // 50% opacity for reference
-      visible: true,
+      hidden: false,
       blendMode: 'multiply',
     });
   }
@@ -159,24 +159,17 @@ export async function createPsdWithLayers(
     channels: 4, // RGBA
     bitsPerChannel: 8,
     colorMode: 3, // RGB
-    layers,
     children: layers,
     imageResources: {
       // Set DPI for proper printing
       resolutionInfo: {
         horizontalResolution: options.dpi,
         horizontalResolutionUnit: 'PPI',
-        widthUnit: 'inches',
+        widthUnit: 'Inches',
         verticalResolution: options.dpi,
         verticalResolutionUnit: 'PPI',
-        heightUnit: 'inches',
+        heightUnit: 'Inches',
       },
-    },
-    // Add author info for Procreate
-    docInfo: {
-      author: 'InkCraft AI',
-      title: 'Tattoo Stencil',
-      keywords: ['tattoo', 'stencil', 'procreate'],
     },
   };
   

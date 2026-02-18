@@ -1,125 +1,181 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod/v4";
+import { db } from "@/lib/db";
+import { checkRateLimit } from "@/lib/rate-limit";
 
-// In-memory job storage
-const jobs = new Map<string, { status: string; result?: string; error?: string; startTime: number }>();
+// Rate limit: 10 generations per minute per IP
+const RATE_LIMIT = { max: 10, windowMs: 60_000 };
 
-// Cleanup old jobs every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [id, job] of jobs) {
-    if (now - job.startTime > 10 * 60 * 1000) jobs.delete(id);
-  }
-}, 5 * 60 * 1000);
+// Zod schema for generation options (sent as JSON fields in FormData or JSON body)
+const optionsSchema = z.object({
+  style: z.enum(["outline", "simple", "detailed", "hatching", "solid"]).default("outline"),
+  lineThickness: z.number().int().min(1).max(5).default(3),
+  contrast: z.number().int().min(0).max(100).default(50),
+  inverted: z.boolean().default(false),
+  lineColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Invalid hex color").default("#000000"),
+  transparentBg: z.boolean().default(false),
+});
 
 // Stencil processor service URL (OpenCV-based)
 const STENCIL_SERVICE_URL = "http://localhost:3005/generate";
 
 async function startGeneration(
-  jobId: string, 
-  imageBase64: string, 
-  style: string, 
-  lineThickness: number, 
-  contrast: number, 
-  inverted: boolean, 
-  lineColor: string, 
+  jobId: string,
+  imageBase64: string,
+  style: string,
+  lineThickness: number,
+  contrast: number,
+  inverted: boolean,
+  lineColor: string,
   transparentBg: boolean
 ) {
   try {
     console.log(`[Job ${jobId}] Processing ${style} style with OpenCV...`);
-    
-    // Call the Python stencil processor - this PRESERVES the input image
+
     const response = await fetch(STENCIL_SERVICE_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         image: imageBase64,
-        style: style,
-        lineThickness: lineThickness,
-        contrast: contrast,
-        inverted: inverted,
-        lineColor: lineColor,
-        transparentBg: transparentBg,
+        style,
+        lineThickness,
+        contrast,
+        inverted,
+        lineColor,
+        transparentBg,
       }),
     });
 
     const data = await response.json();
-    
+
     if (!data.success) {
       throw new Error(data.error || "Stencil generation failed");
     }
 
-    jobs.set(jobId, { 
-      status: "completed", 
-      result: data.stencilImage,
-      startTime: Date.now()
+    await db.stencil.update({
+      where: { id: jobId },
+      data: { status: "completed", stencilImage: data.stencilImage },
     });
-    
-    console.log(`[Job ${jobId}] ✅ Stencil completed!`);
-    
+
+    console.log(`[Job ${jobId}] Stencil completed`);
+
   } catch (error) {
-    console.error(`[Job ${jobId}] ❌ Error:`, error instanceof Error ? error.message : "Unknown");
-    jobs.set(jobId, { 
-      status: "failed", 
-      error: error instanceof Error ? error.message : "Generation failed",
-      startTime: Date.now()
+    console.error(`[Job ${jobId}] Error:`, error instanceof Error ? error.message : "Unknown");
+    await db.stencil.update({
+      where: { id: jobId },
+      data: { status: "failed" },
     });
   }
 }
 
+/** Convert a File/Blob to a base64 data URL */
+async function fileToBase64(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const base64 = Buffer.from(buffer).toString("base64");
+  return `data:${file.type};base64,${base64}`;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { 
-      image, 
-      style = "outline", 
-      lineThickness = 3, 
-      contrast = 50, 
-      inverted = false, 
-      lineColor = "#000000", 
-      transparentBg = false, 
-      jobId, 
-      check 
-    } = body;
+    // Rate limiting by IP
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      || request.headers.get("x-real-ip")
+      || "unknown";
+    const rateCheck = checkRateLimit(ip, RATE_LIMIT);
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { success: false, error: "Zu viele Anfragen. Bitte warten Sie einen Moment." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": Math.ceil(rateCheck.retryAfterMs / 1000).toString(),
+            "X-RateLimit-Remaining": "0",
+          },
+        }
+      );
+    }
 
-    // Check job status
-    if (check && jobId) {
-      const job = jobs.get(jobId);
-      if (!job) {
-        return NextResponse.json({ success: false, error: "Job not found" }, { status: 404 });
+    const contentType = request.headers.get("content-type") || "";
+
+    let imageBase64: string;
+    let options: z.infer<typeof optionsSchema>;
+
+    if (contentType.includes("multipart/form-data")) {
+      // FormData upload (efficient binary transfer)
+      const formData = await request.formData();
+      const imageFile = formData.get("image") as File | null;
+
+      if (!imageFile || imageFile.size === 0) {
+        return NextResponse.json({ success: false, error: "No image provided" }, { status: 400 });
       }
-      return NextResponse.json({ 
-        success: true, 
-        status: job.status,
-        result: job.result,
-        error: job.error 
-      });
+
+      if (imageFile.size > 10 * 1024 * 1024) {
+        return NextResponse.json({ success: false, error: "Image too large (max 10MB)" }, { status: 400 });
+      }
+
+      imageBase64 = await fileToBase64(imageFile);
+
+      // Parse options from FormData fields
+      const rawOptions = {
+        style: formData.get("style") || undefined,
+        lineThickness: formData.get("lineThickness") ? Number(formData.get("lineThickness")) : undefined,
+        contrast: formData.get("contrast") ? Number(formData.get("contrast")) : undefined,
+        inverted: formData.get("inverted") === "true",
+        lineColor: formData.get("lineColor") || undefined,
+        transparentBg: formData.get("transparentBg") === "true",
+      };
+
+      const parseResult = optionsSchema.safeParse(rawOptions);
+      if (!parseResult.success) {
+        return NextResponse.json(
+          { success: false, error: "Invalid options", details: z.prettifyError(parseResult.error) },
+          { status: 400 }
+        );
+      }
+      options = parseResult.data;
+
+    } else {
+      // JSON body (backwards compatible)
+      const body = await request.json();
+
+      if (!body.image) {
+        return NextResponse.json({ success: false, error: "No image provided" }, { status: 400 });
+      }
+
+      imageBase64 = body.image;
+
+      const parseResult = optionsSchema.safeParse(body);
+      if (!parseResult.success) {
+        return NextResponse.json(
+          { success: false, error: "Invalid options", details: z.prettifyError(parseResult.error) },
+          { status: 400 }
+        );
+      }
+      options = parseResult.data;
     }
 
-    if (!image) {
-      return NextResponse.json({ success: false, error: "No image provided" }, { status: 400 });
-    }
+    const { style, lineThickness, contrast, inverted, lineColor, transparentBg } = options;
 
-    // Start new job
-    const newJobId = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-    jobs.set(newJobId, { status: "processing", startTime: Date.now() });
-    
-    // Start generation in background - using OpenCV to PRESERVE the input image
-    startGeneration(
-      newJobId, 
-      image, 
-      style, 
-      lineThickness, 
-      contrast, 
-      inverted, 
-      lineColor, 
-      transparentBg
-    );
-    
-    console.log(`[Stencil API] Job ${newJobId} started`);
-    
-    return NextResponse.json({ 
-      success: true, 
-      jobId: newJobId,
+    // Create job in database
+    const stencil = await db.stencil.create({
+      data: {
+        originalImage: imageBase64,
+        style,
+        lineThickness,
+        contrast,
+        inverted,
+        status: "processing",
+      },
+    });
+
+    // Start generation in background
+    startGeneration(stencil.id, imageBase64, style, lineThickness, contrast, inverted, lineColor, transparentBg);
+
+    console.log(`[Stencil API] Job ${stencil.id} started`);
+
+    return NextResponse.json({
+      success: true,
+      jobId: stencil.id,
       message: "Generation started"
     });
 
@@ -135,20 +191,82 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const jobId = searchParams.get("jobId");
-  
+  const stream = searchParams.get("stream");
+
   if (!jobId) {
     return NextResponse.json({ success: false, error: "Job ID required" }, { status: 400 });
   }
-  
-  const job = jobs.get(jobId);
-  if (!job) {
+
+  // SSE stream mode — push job status updates in real time
+  if (stream === "1") {
+    const encoder = new TextEncoder();
+    const readable = new ReadableStream({
+      async start(controller) {
+        const sendEvent = (data: Record<string, unknown>) => {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+        };
+
+        let attempts = 0;
+        const maxAttempts = 120; // 2 minutes max (120 * 1s)
+
+        while (attempts < maxAttempts) {
+          try {
+            const stencil = await db.stencil.findUnique({ where: { id: jobId } });
+
+            if (!stencil) {
+              sendEvent({ status: "failed", error: "Job not found" });
+              controller.close();
+              return;
+            }
+
+            if (stencil.status === "completed") {
+              sendEvent({ status: "completed", result: stencil.stencilImage });
+              controller.close();
+              return;
+            }
+
+            if (stencil.status === "failed") {
+              sendEvent({ status: "failed", error: "Generation failed" });
+              controller.close();
+              return;
+            }
+
+            // Still processing — send heartbeat
+            sendEvent({ status: "processing" });
+          } catch {
+            sendEvent({ status: "failed", error: "Internal error" });
+            controller.close();
+            return;
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          attempts++;
+        }
+
+        sendEvent({ status: "failed", error: "Timeout" });
+        controller.close();
+      },
+    });
+
+    return new Response(readable, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
+    });
+  }
+
+  // Standard JSON polling (backwards compatible)
+  const stencil = await db.stencil.findUnique({ where: { id: jobId } });
+
+  if (!stencil) {
     return NextResponse.json({ success: false, error: "Job not found" }, { status: 404 });
   }
-  
-  return NextResponse.json({ 
-    success: true, 
-    status: job.status,
-    result: job.result,
-    error: job.error 
+
+  return NextResponse.json({
+    success: true,
+    status: stencil.status,
+    result: stencil.stencilImage,
   });
 }
