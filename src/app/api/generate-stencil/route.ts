@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod/v4";
 import { db } from "@/lib/db";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { auth } from "@/lib/auth";
+import { PRICING_TIERS, canUseStyle } from "@/lib/pricing";
+import type { TierKey } from "@/lib/pricing";
 
 // Rate limit: 10 generations per minute per IP
 const RATE_LIMIT = { max: 10, windowMs: 60_000 };
@@ -243,6 +246,56 @@ export async function POST(request: NextRequest) {
 
     const { style, lineThickness, contrast, inverted, lineColor, transparentBg } = options;
 
+    // Credit system enforcement
+    const session = await auth();
+    let userTier: TierKey = "free";
+
+    if (session?.user?.id) {
+      const subscription = await db.subscription.findUnique({
+        where: { userId: session.user.id },
+      });
+
+      if (subscription) {
+        userTier = (subscription.tier as TierKey) || "free";
+
+        // Reset credits if period expired
+        const now = new Date();
+        const resetAt = subscription.creditsResetAt;
+        const needsReset = userTier === "free"
+          ? now.toDateString() !== resetAt.toDateString() // daily reset for free
+          : now.getMonth() !== resetAt.getMonth() || now.getFullYear() !== resetAt.getFullYear(); // monthly reset
+
+        if (needsReset) {
+          await db.subscription.update({
+            where: { userId: session.user.id },
+            data: { creditsUsed: 0, creditsResetAt: now },
+          });
+          subscription.creditsUsed = 0;
+        }
+
+        // Check credit limits
+        const tierFeatures = PRICING_TIERS[userTier].features as Record<string, unknown>;
+        const limit = userTier === "free"
+          ? (tierFeatures.stencilsPerDay as number) ?? 3
+          : (tierFeatures.stencilsPerMonth as number) ?? Infinity;
+
+        if (subscription.creditsUsed >= limit) {
+          return NextResponse.json(
+            { success: false, error: "Credit limit reached. Please upgrade your plan.", creditLimit: true },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
+    // Check style access
+    if (!canUseStyle(userTier, style)) {
+      return NextResponse.json(
+        { success: false, error: "Style not available on your plan. Please upgrade.", styleRestricted: true },
+        { status: 403 }
+      );
+    }
+
     // Create job in database
     const stencil = await db.stencil.create({
       data: {
@@ -254,6 +307,14 @@ export async function POST(request: NextRequest) {
         status: "processing",
       },
     });
+
+    // Increment credit usage
+    if (session?.user?.id) {
+      await db.subscription.updateMany({
+        where: { userId: session.user.id },
+        data: { creditsUsed: { increment: 1 } },
+      });
+    }
 
     // Start generation in background + opportunistic cleanup
     startGeneration(stencil.id, imageBase64, style, lineThickness, contrast, inverted, lineColor, transparentBg);

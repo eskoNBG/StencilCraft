@@ -16,6 +16,9 @@ import { SettingsPanel } from "@/components/SettingsPanel";
 import { ExportDialog } from "@/components/ExportDialog";
 import { GalleryView } from "@/components/GalleryView";
 import { CropDialog } from "@/components/CropDialog";
+import { FAQSection } from "@/components/FAQSection";
+import { SocialProof } from "@/components/SocialProof";
+import { ImageTips } from "@/components/ImageTips";
 import { useLocale } from "@/hooks/useLocale";
 
 export default function Home() {
@@ -339,19 +342,45 @@ export default function Home() {
         )}
       </main>
 
+      {/* Landing Page Sections (only on create tab) */}
+      {activeTab === "create" && (
+        <>
+          <ImageTips />
+          <SocialProof />
+          <FAQSection />
+        </>
+      )}
+
       {/* Footer */}
       <footer className="mt-auto border-t border-border/50 glass">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-primary" />
-              <span className="font-semibold">{t("brand.name")}</span>
-              <span className="text-muted-foreground">&bull;</span>
-              <span className="text-sm text-muted-foreground">{t("brand.tagline")}</span>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles className="w-5 h-5 text-primary" />
+                <span className="font-semibold">{t("brand.name")}</span>
+              </div>
+              <p className="text-sm text-muted-foreground">{t("brand.tagline")}</p>
             </div>
-            <div className="flex items-center gap-6 text-sm text-muted-foreground">
-              <span>{t("footer.madeFor")}</span>
+            <div>
+              <h4 className="font-medium text-sm mb-3">{t("footer.product")}</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><button onClick={() => setActiveTab("create")} className="hover:text-primary transition-colors">{t("common.create")}</button></li>
+                <li><button onClick={() => setActiveTab("gallery")} className="hover:text-primary transition-colors">{t("common.gallery")}</button></li>
+                <li><a href="/pricing" className="hover:text-primary transition-colors">{t("pricing.nav")}</a></li>
+              </ul>
             </div>
+            <div>
+              <h4 className="font-medium text-sm mb-3">{t("footer.legal")}</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><a href="/privacy" className="hover:text-primary transition-colors">{t("footer.privacy")}</a></li>
+                <li><a href="/terms" className="hover:text-primary transition-colors">{t("footer.terms")}</a></li>
+              </ul>
+            </div>
+          </div>
+          <div className="mt-8 pt-6 border-t border-border/30 flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} StencilCraft. {t("footer.rights")}</p>
+            <p className="text-xs text-muted-foreground">{t("footer.madeFor")}</p>
           </div>
         </div>
       </footer>

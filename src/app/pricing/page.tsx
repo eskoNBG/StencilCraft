@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { PricingCard } from "@/components/PricingCard";
-import { Header } from "@/components/Header";
+import { TrustBadges } from "@/components/TrustBadges";
+import { FAQSection } from "@/components/FAQSection";
 import { useLocale } from "@/hooks/useLocale";
 import { Sparkles } from "lucide-react";
 
@@ -11,6 +13,11 @@ export default function PricingPage() {
   const { t } = useLocale();
   const { data: session } = useSession();
   const router = useRouter();
+  const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
+
+  const isYearly = billingPeriod === "yearly";
+  const proPrice = isYearly ? 12 : 14;
+  const studioPrice = isYearly ? 24 : 29;
 
   const handleSelect = async (tier: string) => {
     if (!session) {
@@ -23,7 +30,7 @@ export default function PricingPage() {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tier }),
+        body: JSON.stringify({ tier, billingPeriod }),
       });
       const data = await res.json();
       if (data.url) {
@@ -77,6 +84,33 @@ export default function PricingPage() {
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             {t("pricing.subtitle")}
           </p>
+
+          {/* Billing Toggle */}
+          <div className="flex items-center justify-center gap-4 mt-8">
+            <button
+              onClick={() => setBillingPeriod("monthly")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                !isYearly
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t("pricing.monthly")}
+            </button>
+            <button
+              onClick={() => setBillingPeriod("yearly")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all relative ${
+                isYearly
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t("pricing.yearly")}
+              <span className="absolute -top-2 -right-2 bg-green-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                -17%
+              </span>
+            </button>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8">
@@ -90,7 +124,8 @@ export default function PricingPage() {
           <PricingCard
             tier="pro"
             name="Pro"
-            price={14}
+            price={proPrice}
+            yearlyPrice={isYearly ? proPrice : undefined}
             features={proFeatures}
             highlighted
             onSelect={() => handleSelect("pro")}
@@ -98,12 +133,23 @@ export default function PricingPage() {
           <PricingCard
             tier="studio"
             name="Studio"
-            price={29}
+            price={studioPrice}
+            yearlyPrice={isYearly ? studioPrice : undefined}
             features={studioFeatures}
             onSelect={() => handleSelect("studio")}
           />
         </div>
+
+        {isYearly && (
+          <p className="text-center text-sm text-muted-foreground mt-4">
+            {t("pricing.yearlySave")}
+          </p>
+        )}
+
+        <TrustBadges />
       </div>
+
+      <FAQSection />
     </div>
   );
 }

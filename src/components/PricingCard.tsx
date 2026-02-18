@@ -4,12 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, X, Crown } from "lucide-react";
 import { useLocale } from "@/hooks/useLocale";
-import type { TranslationKey } from "@/lib/i18n";
 
 interface PricingCardProps {
   tier: "free" | "pro" | "studio";
   name: string;
   price: number;
+  yearlyPrice?: number;
   features: { label: string; included: boolean }[];
   highlighted?: boolean;
   onSelect: () => void;
@@ -20,6 +20,7 @@ export function PricingCard({
   tier,
   name,
   price,
+  yearlyPrice,
   features,
   highlighted,
   onSelect,
@@ -51,7 +52,9 @@ export function PricingCard({
             {price === 0 ? t("pricing.freePrice") : `${price}\u20AC`}
           </span>
           {price > 0 && (
-            <span className="text-muted-foreground">{t("pricing.perMonth")}</span>
+            <span className="text-muted-foreground">
+              {yearlyPrice ? t("pricing.perMonthYearly") : t("pricing.perMonth")}
+            </span>
           )}
         </div>
       </CardHeader>
