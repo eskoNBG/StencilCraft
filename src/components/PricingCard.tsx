@@ -10,6 +10,7 @@ interface PricingCardProps {
   name: string;
   price: number;
   yearlyPrice?: number;
+  creditsPerMonth?: number;
   features: { label: string; included: boolean }[];
   highlighted?: boolean;
   onSelect: () => void;
@@ -21,6 +22,7 @@ export function PricingCard({
   name,
   price,
   yearlyPrice,
+  creditsPerMonth,
   features,
   highlighted,
   onSelect,
@@ -57,6 +59,11 @@ export function PricingCard({
             </span>
           )}
         </div>
+        {price > 0 && creditsPerMonth && creditsPerMonth < Infinity && (
+          <p className="text-xs text-muted-foreground mt-1">
+            {(price / creditsPerMonth).toFixed(2)}{"\u20AC"} {t("pricing.perStencil")}
+          </p>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         <ul className="space-y-3">

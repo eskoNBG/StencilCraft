@@ -226,6 +226,66 @@ const translations = {
     "footer.privacy": "Datenschutz",
     "footer.terms": "Nutzungsbedingungen",
     "footer.rights": "Alle Rechte vorbehalten.",
+    "footer.support": "Support",
+    "footer.cookiePolicy": "Cookie-Richtlinie",
+    "footer.gdpr": "DSGVO",
+    "footer.more": "Weiteres",
+    "footer.licensing": "Lizenzierung",
+    "footer.refundPolicy": "R\u00FCckerstattung",
+
+    // How it Works
+    "hiw.title": "So funktioniert\u2019s",
+    "hiw.subtitle": "In 3 einfachen Schritten zum perfekten Stencil",
+    "hiw.step1Title": "Bild hochladen",
+    "hiw.step1Desc": "Laden Sie ein beliebiges Referenzbild hoch \u2014 Foto, Zeichnung oder Design.",
+    "hiw.step2Title": "Stil w\u00E4hlen",
+    "hiw.step2Desc": "W\u00E4hlen Sie aus 5 professionellen Stilen: Outline, Simple, Detailed, Hatching oder Solid.",
+    "hiw.step3Title": "Herunterladen",
+    "hiw.step3Desc": "Exportieren Sie als PNG, PSD (Procreate) oder SVG \u2014 druckfertig in Sekunden.",
+
+    // Showcase
+    "showcase.title": "Ergebnisse",
+    "showcase.subtitle": "Sehen Sie die Qualit\u00E4t unserer Stencil-Generierung",
+    "showcase.portrait": "Portrait",
+    "showcase.nature": "Natur",
+    "showcase.animal": "Tier",
+    "showcase.realism": "Realismus",
+    "showcase.portraitDesc": "Portraits mit klaren Gesichtskonturen und feinen Details \u2014 perfekt f\u00FCr realistische Tattoos.",
+    "showcase.natureDesc": "Naturszenen mit Blumen, B\u00E4umen und Landschaften \u2014 ideal f\u00FCr organische Designs.",
+    "showcase.animalDesc": "Tiermotive mit scharfen Konturen und nat\u00FCrlichen Texturen \u2014 von Adler bis Wolf.",
+    "showcase.realismDesc": "Hochdetaillierte realistische Motive \u2014 f\u00FCr anspruchsvolle Tattoo-Designs.",
+    "showcase.originalPhoto": "Original-Foto",
+    "showcase.stencilResult": "Stencil-Ergebnis",
+    "showcase.uploadNote": "Laden Sie Ihr eigenes Bild hoch um das Ergebnis zu sehen",
+
+    // Team
+    "team.title": "Unser Team",
+    "team.subtitle": "Die K\u00F6pfe hinter StencilCraft",
+    "team.member1Name": "Alex M\u00FCller",
+    "team.member1Role": "Gr\u00FCnder & Lead Developer",
+    "team.member1Bio": "Full-Stack-Entwickler mit Leidenschaft f\u00FCr Bildverarbeitung und Tattoo-Kunst.",
+    "team.member2Name": "Lisa Weber",
+    "team.member2Role": "Co-Gr\u00FCnderin & Lead Artist",
+    "team.member2Bio": "Professionelle Tattoo-K\u00FCnstlerin mit \u00FCber 10 Jahren Erfahrung im Studio.",
+
+    // Mobile App
+    "mobile.title": "Mobile App \u2014 Coming Soon",
+    "mobile.desc": "StencilCraft bald auch als native App f\u00FCr iOS und Android. Erstellen Sie Stencils unterwegs, direkt vom Smartphone.",
+    "mobile.comingSoon": "Bald verf\u00FCgbar",
+    "mobile.launchDate": "Geplanter Launch: Q3 2026",
+
+    // Contact
+    "contact.title": "Kontakt & Support",
+    "contact.subtitle": "Wir helfen Ihnen gerne weiter",
+    "contact.email": "E-Mail Support",
+    "contact.emailDesc": "Antwort innerhalb von 24 Stunden an Werktagen",
+    "contact.faq": "FAQ",
+    "contact.faqDesc": "Finden Sie Antworten auf h\u00E4ufig gestellte Fragen",
+    "contact.faqLink": "Zu den FAQ",
+    "contact.responseTime": "Durchschnittliche Antwortzeit: < 24 Stunden",
+
+    // Pricing extras
+    "pricing.perStencil": "pro Stencil",
 
     // FAQ
     "faq.title": "H\u00E4ufig gestellte Fragen",
@@ -332,6 +392,61 @@ const translations = {
     "legal.refundsDesc": "Wir bieten eine 14-t\u00E4gige Geld-zur\u00FCck-Garantie f\u00FCr alle kostenpflichtigen Abonnements. Danach sind keine R\u00FCckerstattungen m\u00F6glich.",
     "legal.liability": "Haftungsbeschr\u00E4nkung",
     "legal.liabilityDesc": "StencilCraft wird \u201Eas is\u201C bereitgestellt. Wir haften nicht f\u00FCr Sch\u00E4den, die durch die Nutzung des Services entstehen, soweit gesetzlich zul\u00E4ssig.",
+
+    // Legal - Cookie Policy
+    "legal.cookieTitle": "Cookie-Richtlinie",
+    "legal.cookieWhat": "Was sind Cookies?",
+    "legal.cookieWhatDesc": "Cookies sind kleine Textdateien, die auf Ihrem Ger\u00E4t gespeichert werden, um die Nutzung unserer Website zu verbessern.",
+    "legal.cookieTypes": "Arten von Cookies",
+    "legal.cookieTypesDesc": "Wir verwenden folgende Arten von Cookies:",
+    "legal.cookieEssential": "Essentielle Cookies: F\u00FCr Authentifizierung und Sitzungsverwaltung (zwingend erforderlich)",
+    "legal.cookiePreferences": "Pr\u00E4ferenz-Cookies: F\u00FCr Ihre Theme- und Spracheinstellungen (localStorage)",
+    "legal.cookieThirdParty": "Drittanbieter-Cookies",
+    "legal.cookieThirdPartyDesc": "Stripe setzt Cookies f\u00FCr die sichere Zahlungsabwicklung. Wir verwenden keine Werbe- oder Tracking-Cookies.",
+    "legal.cookieManage": "Cookies verwalten",
+    "legal.cookieManageDesc": "Sie k\u00F6nnen Cookies in Ihren Browsereinstellungen deaktivieren. Beachten Sie, dass dies die Funktionalit\u00E4t der Website einschr\u00E4nken kann.",
+
+    // Legal - GDPR
+    "legal.gdprTitle": "DSGVO-Informationen",
+    "legal.gdprController": "Verantwortlicher",
+    "legal.gdprControllerDesc": "StencilCraft ist verantwortlich f\u00FCr die Verarbeitung Ihrer personenbezogenen Daten gem\u00E4\u00DF der DSGVO.",
+    "legal.gdprBasis": "Rechtsgrundlage",
+    "legal.gdprBasisDesc": "Die Verarbeitung erfolgt auf Basis von Art. 6 Abs. 1 DSGVO: Einwilligung, Vertragserf\u00FCllung und berechtigtes Interesse.",
+    "legal.gdprRightsTitle": "Ihre Rechte",
+    "legal.gdprRight1": "Recht auf Auskunft (\u00FCber gespeicherte Daten)",
+    "legal.gdprRight2": "Recht auf Berichtigung (falscher Daten)",
+    "legal.gdprRight3": "Recht auf L\u00F6schung (Recht auf Vergessenwerden)",
+    "legal.gdprRight4": "Recht auf Daten\u00FCbertragbarkeit",
+    "legal.gdprRight5": "Recht auf Widerspruch gegen die Verarbeitung",
+    "legal.gdprRetention": "Speicherdauer",
+    "legal.gdprRetentionDesc": "Personenbezogene Daten werden gel\u00F6scht, sobald der Zweck der Speicherung entf\u00E4llt oder Sie Ihr Konto l\u00F6schen.",
+    "legal.gdprTransfer": "Daten\u00FCbermittlung",
+    "legal.gdprTransferDesc": "Zahlungsdaten werden an Stripe (USA) \u00FCbermittelt, das dem EU-US Data Privacy Framework unterliegt.",
+
+    // Legal - Licensing
+    "legal.licensingTitle": "Lizenzierung",
+    "legal.licenseGrant": "Lizenzgew\u00E4hrung",
+    "legal.licenseGrantDesc": "StencilCraft gew\u00E4hrt Ihnen eine nicht-exklusive, weltweite Lizenz zur Nutzung des Services gem\u00E4\u00DF Ihrem gew\u00E4hlten Abonnement.",
+    "legal.licenseOutput": "Rechte an generierten Stencils",
+    "legal.licenseOutputDesc": "Alle \u00FCber StencilCraft generierten Stencils geh\u00F6ren Ihnen. Sie d\u00FCrfen diese frei f\u00FCr pers\u00F6nliche und kommerzielle Tattoo-Zwecke verwenden.",
+    "legal.licenseRestrictions": "Einschr\u00E4nkungen",
+    "legal.licenseRestrictionsDesc": "Folgende Nutzungen sind nicht gestattet:",
+    "legal.licenseRestriction1": "Weiterverkauf des Services oder automatisierte Massenverarbeitung",
+    "legal.licenseRestriction2": "Umgehung von Nutzungslimits oder Sicherheitsma\u00DFnahmen",
+    "legal.licenseRestriction3": "Upload von urheberrechtlich gesch\u00FCtztem Material ohne Berechtigung",
+    "legal.licenseCommercial": "Kommerzielle Nutzung",
+    "legal.licenseCommercialDesc": "Pro- und Studio-Abonnenten d\u00FCrfen generierte Stencils uneingeschr\u00E4nkt kommerziell nutzen. Free-User d\u00FCrfen Stencils f\u00FCr pers\u00F6nliche Zwecke verwenden.",
+
+    // Legal - Refund
+    "legal.refundTitle": "R\u00FCckerstattungsrichtlinie",
+    "legal.refundPolicy": "Unsere Garantie",
+    "legal.refundPolicyDesc": "Wir bieten eine 14-t\u00E4gige Geld-zur\u00FCck-Garantie f\u00FCr alle kostenpflichtigen Abonnements.",
+    "legal.refundEligibility": "Anspruchsberechtigung",
+    "legal.refundEligibilityDesc": "Sie k\u00F6nnen innerhalb von 14 Tagen nach Abschluss Ihres Abonnements eine vollst\u00E4ndige R\u00FCckerstattung beantragen, unabh\u00E4ngig vom Grund.",
+    "legal.refundProcess": "Ablauf",
+    "legal.refundProcessDesc": "Kontaktieren Sie uns per E-Mail unter support@stencilcraft.app. R\u00FCckerstattungen werden innerhalb von 5-10 Werktagen bearbeitet.",
+    "legal.refundExceptions": "Ausnahmen",
+    "legal.refundExceptionsDesc": "Nach Ablauf der 14-Tage-Frist sind keine R\u00FCckerstattungen m\u00F6glich. Bei Missbrauch des Services behalten wir uns das Recht vor, R\u00FCckerstattungen abzulehnen.",
 
   },
 
@@ -560,6 +675,66 @@ const translations = {
     "footer.privacy": "Privacy Policy",
     "footer.terms": "Terms of Service",
     "footer.rights": "All rights reserved.",
+    "footer.support": "Support",
+    "footer.cookiePolicy": "Cookie Policy",
+    "footer.gdpr": "GDPR",
+    "footer.more": "More",
+    "footer.licensing": "Licensing",
+    "footer.refundPolicy": "Refund Policy",
+
+    // How it Works
+    "hiw.title": "How It Works",
+    "hiw.subtitle": "3 simple steps to the perfect stencil",
+    "hiw.step1Title": "Upload Image",
+    "hiw.step1Desc": "Upload any reference image \u2014 photo, drawing, or design.",
+    "hiw.step2Title": "Choose Style",
+    "hiw.step2Desc": "Choose from 5 professional styles: Outline, Simple, Detailed, Hatching, or Solid.",
+    "hiw.step3Title": "Download",
+    "hiw.step3Desc": "Export as PNG, PSD (Procreate), or SVG \u2014 print-ready in seconds.",
+
+    // Showcase
+    "showcase.title": "Results",
+    "showcase.subtitle": "See the quality of our stencil generation",
+    "showcase.portrait": "Portrait",
+    "showcase.nature": "Nature",
+    "showcase.animal": "Animal",
+    "showcase.realism": "Realism",
+    "showcase.portraitDesc": "Portraits with clear facial contours and fine details \u2014 perfect for realistic tattoos.",
+    "showcase.natureDesc": "Nature scenes with flowers, trees, and landscapes \u2014 ideal for organic designs.",
+    "showcase.animalDesc": "Animal subjects with sharp contours and natural textures \u2014 from eagle to wolf.",
+    "showcase.realismDesc": "Highly detailed realistic subjects \u2014 for demanding tattoo designs.",
+    "showcase.originalPhoto": "Original Photo",
+    "showcase.stencilResult": "Stencil Result",
+    "showcase.uploadNote": "Upload your own image to see the result",
+
+    // Team
+    "team.title": "Our Team",
+    "team.subtitle": "The people behind StencilCraft",
+    "team.member1Name": "Alex M\u00FCller",
+    "team.member1Role": "Founder & Lead Developer",
+    "team.member1Bio": "Full-stack developer with a passion for image processing and tattoo art.",
+    "team.member2Name": "Lisa Weber",
+    "team.member2Role": "Co-Founder & Lead Artist",
+    "team.member2Bio": "Professional tattoo artist with over 10 years of studio experience.",
+
+    // Mobile App
+    "mobile.title": "Mobile App \u2014 Coming Soon",
+    "mobile.desc": "StencilCraft coming soon as a native app for iOS and Android. Create stencils on the go, directly from your smartphone.",
+    "mobile.comingSoon": "Coming Soon",
+    "mobile.launchDate": "Planned launch: Q3 2026",
+
+    // Contact
+    "contact.title": "Contact & Support",
+    "contact.subtitle": "We're happy to help",
+    "contact.email": "Email Support",
+    "contact.emailDesc": "Response within 24 hours on business days",
+    "contact.faq": "FAQ",
+    "contact.faqDesc": "Find answers to frequently asked questions",
+    "contact.faqLink": "View FAQ",
+    "contact.responseTime": "Average response time: < 24 hours",
+
+    // Pricing extras
+    "pricing.perStencil": "per stencil",
 
     // FAQ
     "faq.title": "Frequently Asked Questions",
@@ -666,6 +841,61 @@ const translations = {
     "legal.refundsDesc": "We offer a 14-day money-back guarantee for all paid subscriptions. No refunds are possible after that period.",
     "legal.liability": "Limitation of Liability",
     "legal.liabilityDesc": "StencilCraft is provided \u201Cas is\u201D. We are not liable for damages arising from the use of the service, to the extent permitted by law.",
+
+    // Legal - Cookie Policy
+    "legal.cookieTitle": "Cookie Policy",
+    "legal.cookieWhat": "What Are Cookies?",
+    "legal.cookieWhatDesc": "Cookies are small text files stored on your device to improve your experience on our website.",
+    "legal.cookieTypes": "Types of Cookies",
+    "legal.cookieTypesDesc": "We use the following types of cookies:",
+    "legal.cookieEssential": "Essential cookies: For authentication and session management (required)",
+    "legal.cookiePreferences": "Preference cookies: For your theme and language settings (localStorage)",
+    "legal.cookieThirdParty": "Third-Party Cookies",
+    "legal.cookieThirdPartyDesc": "Stripe sets cookies for secure payment processing. We do not use advertising or tracking cookies.",
+    "legal.cookieManage": "Managing Cookies",
+    "legal.cookieManageDesc": "You can disable cookies in your browser settings. Note that this may limit website functionality.",
+
+    // Legal - GDPR
+    "legal.gdprTitle": "GDPR Information",
+    "legal.gdprController": "Data Controller",
+    "legal.gdprControllerDesc": "StencilCraft is responsible for processing your personal data in accordance with GDPR.",
+    "legal.gdprBasis": "Legal Basis",
+    "legal.gdprBasisDesc": "Processing is based on Art. 6(1) GDPR: consent, contractual fulfillment, and legitimate interest.",
+    "legal.gdprRightsTitle": "Your Rights",
+    "legal.gdprRight1": "Right of access (to stored data)",
+    "legal.gdprRight2": "Right to rectification (of incorrect data)",
+    "legal.gdprRight3": "Right to erasure (right to be forgotten)",
+    "legal.gdprRight4": "Right to data portability",
+    "legal.gdprRight5": "Right to object to processing",
+    "legal.gdprRetention": "Data Retention",
+    "legal.gdprRetentionDesc": "Personal data is deleted once the purpose of storage no longer applies or you delete your account.",
+    "legal.gdprTransfer": "Data Transfer",
+    "legal.gdprTransferDesc": "Payment data is transferred to Stripe (USA), which is subject to the EU-US Data Privacy Framework.",
+
+    // Legal - Licensing
+    "legal.licensingTitle": "Licensing",
+    "legal.licenseGrant": "License Grant",
+    "legal.licenseGrantDesc": "StencilCraft grants you a non-exclusive, worldwide license to use the service according to your chosen subscription.",
+    "legal.licenseOutput": "Rights to Generated Stencils",
+    "legal.licenseOutputDesc": "All stencils generated through StencilCraft belong to you. You may freely use them for personal and commercial tattoo purposes.",
+    "legal.licenseRestrictions": "Restrictions",
+    "legal.licenseRestrictionsDesc": "The following uses are not permitted:",
+    "legal.licenseRestriction1": "Reselling the service or automated mass processing",
+    "legal.licenseRestriction2": "Circumventing usage limits or security measures",
+    "legal.licenseRestriction3": "Uploading copyrighted material without authorization",
+    "legal.licenseCommercial": "Commercial Use",
+    "legal.licenseCommercialDesc": "Pro and Studio subscribers may use generated stencils for unlimited commercial use. Free users may use stencils for personal purposes.",
+
+    // Legal - Refund
+    "legal.refundTitle": "Refund Policy",
+    "legal.refundPolicy": "Our Guarantee",
+    "legal.refundPolicyDesc": "We offer a 14-day money-back guarantee for all paid subscriptions.",
+    "legal.refundEligibility": "Eligibility",
+    "legal.refundEligibilityDesc": "You can request a full refund within 14 days of subscribing, regardless of the reason.",
+    "legal.refundProcess": "Process",
+    "legal.refundProcessDesc": "Contact us via email at support@stencilcraft.app. Refunds are processed within 5-10 business days.",
+    "legal.refundExceptions": "Exceptions",
+    "legal.refundExceptionsDesc": "No refunds are possible after the 14-day period. We reserve the right to deny refunds in cases of service abuse.",
   },
 } as const;
 

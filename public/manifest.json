@@ -1,0 +1,16 @@
+{
+  "name": "StencilCraft - Tattoo Stencil Generator",
+  "short_name": "StencilCraft",
+  "description": "Professional AI-powered tattoo stencil generator. Turn any photo into a perfect stencil.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#09090B",
+  "theme_color": "#8B5CF6",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

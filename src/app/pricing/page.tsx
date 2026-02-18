@@ -126,6 +126,7 @@ export default function PricingPage() {
             name="Pro"
             price={proPrice}
             yearlyPrice={isYearly ? proPrice : undefined}
+            creditsPerMonth={100}
             features={proFeatures}
             highlighted
             onSelect={() => handleSelect("pro")}
