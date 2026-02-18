@@ -10,6 +10,7 @@ const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
   display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -91,7 +92,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} antialiased bg-background text-foreground min-h-screen`}
+        className={`${geistSans.variable} ${geistSans.className} antialiased bg-background text-foreground min-h-screen`}
       >
         <SessionProvider>
           <LocaleProvider>

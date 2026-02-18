@@ -39,7 +39,7 @@ export function CropDialog({ image, open, onCropComplete, onSkip }: CropDialogPr
 
   return (
     <Dialog open={open} onOpenChange={() => onSkip()}>
-      <DialogContent className="max-w-2xl bg-zinc-900 border-primary/30">
+      <DialogContent className="max-w-2xl bg-zinc-900 border-primary/30" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Crop className="w-5 h-5 text-primary" />
